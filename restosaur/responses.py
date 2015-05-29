@@ -40,7 +40,7 @@ class Response(HttpResponse):
         self.content = self.serializer.dumps(data)
 
     def get_converter(self, representation):
-        dummy_converter = lambda x: x
+        dummy_converter = lambda x, ctx: x
         converter = self.request.service.representations.get(representation)
         return converter or dummy_converter
 
