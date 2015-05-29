@@ -77,7 +77,7 @@ class Resource(object):
             resp = self._callbacks[method](request, *args, **kw)
             return resp
         else:
-            return MethodNotAllowedResponse(request)
+            return responses.MethodNotAllowedResponse(request)
 
     def representation(self, name='default'):
         def wrapped(func):
