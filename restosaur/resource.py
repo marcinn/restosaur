@@ -5,24 +5,13 @@ import responses
 import urltemplate
 from .serializers import default_serializers
 from .headers import normalize_header_name
+from .context import Context
 
 
 log = logging.getLogger(__name__)
 
 
 class Resource(object):
-    NotFound = responses.NotFoundResponse
-    Created = responses.CreatedResponse
-    NoContent = responses.NoContentResponse
-    Unauthorized = responses.UnauthorizedResponse
-    Forbidden = responses.ForbiddenResponse
-    NotAcceptable = responses.NotAcceptableResponse
-    ValidationError = responses.ValidationErrorResponse
-    Response = responses.Response
-
-    Entity = responses.EntityResponse
-    Collection = responses.CollectionResponse
-
     def __init__(self, path, serializers=None):
         self._path = path
         self._callbacks = {}
@@ -50,34 +39,33 @@ class Resource(object):
 
     def __call__(self, request, *args, **kw):
         method = request.method
-        request.deserialized = None
+        ctx = Context(request=request, resource=self)
 
         if request.META.get('CONTENT_LENGTH') and 'CONTENT_TYPE' in request.META:
             mimetype = mimeparse.best_match(dict(self._serializers.items()),
                     request.META['CONTENT_TYPE'])
             if mimetype:
-                request.deserializer = self._serializers[mimetype]
+                ctx.deserializer = self._serializers[mimetype]
                 if request.body:
-                    request.deserialized = self._serializers[mimetype].loads(request.body)
+                    ctx.body = self._serializers[mimetype].loads(request.body)
             else:
-                return self.NotAcceptable(request)
+                return ctx.NotAcceptable()
 
-        request.content_type = request.META['CONTENT_TYPE']
+        ctx.content_type = request.META['CONTENT_TYPE']
 
         # prepare request headers
 
         headers = request.META.items()
         http_headers = dict(map(lambda x: (normalize_header_name(x[0]),x[1]),
             filter(lambda x: x[0].startswith('HTTP_'), headers)))
-        request.headers = http_headers
-        request.service = self
+        ctx.headers.update(http_headers)
 
         log.debug('Calling %s, %s, %s' % (method, args, kw))
         if method in self._callbacks:
-            resp = self._callbacks[method](request, *args, **kw)
+            resp = self._callbacks[method](ctx, *args, **kw)
             return resp
         else:
-            return responses.MethodNotAllowedResponse(request)
+            return ctx.MethodNotAllowed()
 
     def representation(self, name='default'):
         def wrapped(func):
