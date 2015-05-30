@@ -3,6 +3,8 @@ import logging
 import mimeparse
 import responses
 import urltemplate
+from collections import OrderedDict
+
 from .serializers import default_serializers
 from .headers import normalize_header_name
 from .context import Context
@@ -11,11 +13,55 @@ from .context import Context
 log = logging.getLogger(__name__)
 
 
+def http_response(response):
+    """
+    RESTResponse -> HTTPResponse factory
+    """
+
+    from django.http import HttpResponse
+    from .headers import parse_accept_header, build_content_type_header
+
+    context = response.context
+
+    content_type = None
+    serializer = None
+    representation = None
+
+    if 'accept' in context.headers:
+        accepting = parse_accept_header(context.headers['accept'])
+        for content_type, representation, q in accepting:
+            if content_type == '*/*' or content_type == 'application/*':
+                content_type = 'application/json'
+            if context.resource.serializers.contains(content_type)\
+                and (not representation or representation in context.resource.representations):
+                try:
+                    representation = representation or context.resource.representations.keys()[0]
+                except IndexError:
+                    pass
+                serializer = context.resource.serializers[content_type]
+                content_type = build_content_type_header(content_type, representation)
+                break
+    else:
+        content_type = 'application/json'
+
+    if not content_type or not representation or not serializer:
+        return HttpResponse(status=406) # Not Acceptable
+
+    if response.data is not None:
+        content = response.serialize(serializer, response.data, representation)
+    else:
+        content = ''
+
+    httpresp = HttpResponse(content, status=response.status)
+    httpresp['Content-Type'] = content_type
+    return httpresp
+
+
 class Resource(object):
     def __init__(self, path, serializers=None):
         self._path = path
         self._callbacks = {}
-        self._representations = {}
+        self._representations = OrderedDict()
         self._serializers = serializers or default_serializers
         # register aliases for the decorators
         for verb in ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'):
@@ -49,7 +95,7 @@ class Resource(object):
                 if request.body:
                     ctx.body = self._serializers[mimetype].loads(request.body)
             else:
-                return ctx.NotAcceptable()
+                return http_response(ctx.NotAcceptable())
 
         ctx.content_type = request.META['CONTENT_TYPE']
 
@@ -63,9 +109,9 @@ class Resource(object):
         log.debug('Calling %s, %s, %s' % (method, args, kw))
         if method in self._callbacks:
             resp = self._callbacks[method](ctx, *args, **kw)
-            return resp
+            return http_response(resp)
         else:
-            return ctx.MethodNotAllowed()
+            return http_response(ctx.MethodNotAllowed())
 
     def representation(self, name='default'):
         def wrapped(func):
@@ -80,4 +126,16 @@ class Resource(object):
         uri = context.build_absolute_uri(self._path)
 
         return urltemplate.to_url(uri, params)
+
+    def convert(self, context, obj, representation=None):
+        """
+        Converts model (`obj`) using specified or default `representation`
+        within a `context`
+        """
+
+        if representation is None:
+            convert = self.representations.values()[0]
+        else:
+            convert = self.representations[representation]
+        return convert(obj, context)
 
