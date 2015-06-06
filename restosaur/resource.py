@@ -3,6 +3,7 @@ import logging
 import mimeparse
 import responses
 import urltemplate
+import urllib
 from collections import OrderedDict
 
 from .serializers import default_serializers
@@ -44,7 +45,7 @@ def http_response(response):
     else:
         content_type = 'application/json'
 
-    if not content_type or not representation or not serializer:
+    if not content_type or not serializer:
         return HttpResponse(status=406) # Not Acceptable
 
     if response.data is not None:
@@ -83,9 +84,9 @@ class Resource(object):
     def representations(self):
         return self._representations
 
-    def __call__(self, request, *args, **kw):
-        method = request.method
-        ctx = Context(request=request, resource=self)
+    def __call__(self, ctx, *args, **kw):
+        method = ctx.method
+        request = ctx.request
 
         if request.META.get('CONTENT_LENGTH') and 'CONTENT_TYPE' in request.META:
             mimetype = mimeparse.best_match(dict(self._serializers.items()),
@@ -123,9 +124,14 @@ class Resource(object):
         assert params is None or isinstance(params, dict), "entity.uri() params should be passed as dict"
 
         params = params or {}
-        uri = context.build_absolute_uri(self._path)
 
-        return urltemplate.to_url(uri, params)
+        uri = context.build_absolute_uri(self._path)
+        uri = urltemplate.to_url(uri, params)
+
+        if query:
+            uri += '?'+urllib.urlencode(query)
+
+        return uri
 
     def convert(self, context, obj, representation=None):
         """
@@ -134,7 +140,10 @@ class Resource(object):
         """
 
         if representation is None:
-            convert = self.representations.values()[0]
+            try:
+                convert = self.representations.values()[0]
+            except IndexError:
+                convert = lambda x, ctx: x  # pass through
         else:
             convert = self.representations[representation]
         return convert(obj, context)
