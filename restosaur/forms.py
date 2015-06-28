@@ -4,9 +4,9 @@ from django.forms import *
 class NullBooleanSelect(NullBooleanSelect):
     def __init__(self, *args, **kw):
         super(NullBooleanSelect, self).__init__(*args, **kw)
-        self.choices = ((u'', _('Unknown')),
-                   (u'1', _('Yes')),
-                   (u'0', _('No')))
+        self.choices = ((u'', 'Unknown'),
+                   (u'1', 'Yes'),
+                   (u'0', 'No'))
 
     def value_from_datadict(self, data, files, name):
         value = data.get(name, None)
