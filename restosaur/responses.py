@@ -26,7 +26,7 @@ class Response(object):
 
 class CreatedResponse(Response):
     def __init__(self, context, data=None):
-        super(CreatedResponse, self).__init__(context, data=None, status=201)
+        super(CreatedResponse, self).__init__(context, data=data, status=201)
 
 
 class NoContentResponse(Response):
