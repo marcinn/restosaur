@@ -93,7 +93,7 @@ class API(object):
         return [url('^%s' % self.path, include(patterns('', *urls)))]
 
     def urlpatterns(self):
-        from django.conf.urls.defaults import patterns, include
+        from django.conf.urls import patterns, include
         return patterns('', (r'^', include(self.get_urls())))
 
     def autodiscover(self):
