@@ -20,7 +20,10 @@ class Response(object):
         if data is None:
             return ''
         else:
-            output = self.context.resource.convert(self.context, data, representation)
+            if self.status >= 200 and self.status <300:
+                output = self.context.resource.convert(self.context, data, representation)
+            else:
+                output = data
             return serializer.dumps(output)
 
 
