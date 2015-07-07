@@ -88,13 +88,20 @@ class Resource(object):
         method = ctx.method
         request = ctx.request
 
-        if request.META.get('CONTENT_LENGTH') and 'CONTENT_TYPE' in request.META:
+        try:
+            content_length = int(request.META['CONTENT_LENGTH'])
+        except (KeyError, TypeError, ValueError):
+            content_length = 0
+
+        if content_length and 'CONTENT_TYPE' in request.META:
             mimetype = mimeparse.best_match(dict(self._serializers.items()),
                     request.META['CONTENT_TYPE'])
             if mimetype:
                 ctx.deserializer = self._serializers[mimetype]
                 if request.body:
                     ctx.body = self._serializers[mimetype].loads(request.body)
+            elif not content_length:
+                self.body = None
             else:
                 return http_response(ctx.NotAcceptable())
 
