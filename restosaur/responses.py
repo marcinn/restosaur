@@ -28,38 +28,45 @@ class Response(object):
 
 
 class CreatedResponse(Response):
-    def __init__(self, context, data=None):
-        super(CreatedResponse, self).__init__(context, data=data, status=201)
+    def __init__(self, context, data=None, headers=None):
+        super(CreatedResponse, self).__init__(context, data=data, status=201,
+                headers=headers)
 
 
 class NoContentResponse(Response):
-    def __init__(self, context, data=None):
-        super(NoContentResponse, self).__init__(context, data=None, status=204)
+    def __init__(self, context, data=None, headers=None):
+        super(NoContentResponse, self).__init__(context, data=None, status=204,
+                headers=headers)
 
 
 class UnauthorizedResponse(Response):
-    def __init__(self, context):
-        super(UnauthorizedResponse, self).__init__(context, data=None, status=401)
+    def __init__(self, context, headers=None):
+        super(UnauthorizedResponse, self).__init__(context, data=None,
+                status=401, headers=headers)
 
 
 class ForbiddenResponse(Response):
-    def __init__(self, context):
-        super(ForbiddenResponse, self).__init__(context, data=None, status=403)
+    def __init__(self, context, headers=None):
+        super(ForbiddenResponse, self).__init__(context, data=None, status=403,
+                headers=headers)
 
 
 class NotFoundResponse(Response):
-    def __init__(self, context):
-        super(NotFoundResponse, self).__init__(context, data=None, status=404)
+    def __init__(self, context, headers=None):
+        super(NotFoundResponse, self).__init__(context, data=None, status=404,
+                headers=headers)
 
 
 class MethodNotAllowedResponse(Response):
-    def __init__(self, context):
-        super(MethodNotAllowedResponse, self).__init__(context, data=None, status=405)
+    def __init__(self, context, headers=None):
+        super(MethodNotAllowedResponse, self).__init__(context, data=None,
+                status=405, headers=headers)
 
 
 class CollectionResponse(Response):
-    def __init__(self, context, iterable, totalCount=None, key=None):
-        super(CollectionResponse, self).__init__(context, data=iterable)
+    def __init__(self, context, iterable, totalCount=None, key=None, headers=None):
+        super(CollectionResponse, self).__init__(context, data=iterable,
+                headers=headers)
         self.key = key or 'items'
         self.totalCount = totalCount
 
@@ -76,15 +83,16 @@ class EntityResponse(Response):
 
 
 class NotAcceptableResponse(Response):
-    def __init__(self, context):
-        super(NotAcceptableResponse, self).__init__(context, data=None, status=406)
+    def __init__(self, context, headers=None):
+        super(NotAcceptableResponse, self).__init__(context, data=None,
+                status=406, headers=headers)
 
 
 class ValidationErrorResponse(Response):
-    def __init__(self, context, errors):
+    def __init__(self, context, errors, headers=None):
         resp = {
                 'errors': errors,
                 }
         super(ValidationErrorResponse, self).__init__(context, data=resp,
-                status=422)
+                status=422, headers=headers)
 
