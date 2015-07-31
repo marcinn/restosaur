@@ -55,6 +55,10 @@ def http_response(response):
 
     httpresp = HttpResponse(content, status=response.status)
     httpresp['Content-Type'] = content_type
+
+    for header, value in response.headers.items():
+        httpresp[header]=value
+
     return httpresp
 
 
