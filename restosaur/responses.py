@@ -1,8 +1,11 @@
+from django.utils.http import http_date
 from .utils import model_to_dict
+import times
 
 
 class Response(object):
-    def __init__(self, context, data=None, status=200, headers=None):
+    def __init__(self, context, data=None, status=200, headers=None,
+            last_modified=None):
         self.headers = {}
         self.headers.update(headers or {})
         self.representation = None
@@ -10,11 +13,19 @@ class Response(object):
         self.context = context
         self.status = status
         self.data = data
+        if last_modified:
+            self.set_last_modified(last_modified)
 
     def get_converter(self, representation):
         dummy_converter = lambda x, context: x
         converter = self.context.resource.representations.get(representation)
         return converter or dummy_converter
+
+    def set_last_modified(self, dt):
+        if dt:
+            self.headers['Last-Modified'] = http_date(times.to_unix(dt))
+        else:
+            self.headers.pop('Last-Modified', None)
 
     def serialize(self, serializer, data, representation):
         if data is None:
@@ -36,6 +47,12 @@ class CreatedResponse(Response):
 class NoContentResponse(Response):
     def __init__(self, context, data=None, headers=None):
         super(NoContentResponse, self).__init__(context, data=None, status=204,
+                headers=headers)
+
+
+class NotModifiedResponse(Response):
+    def __init__(self, context, data=None, headers=None):
+        super(NotModifiedResponse, self).__init__(context, data=None, status=304,
                 headers=headers)
 
 

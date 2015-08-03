@@ -1,4 +1,15 @@
 import responses
+import email
+import times
+
+
+def parse_http_date(header, headers):
+    if header in headers and headers[header]:
+        timetuple = email.utils.parsedate_tz(headers[header])
+        try:
+            return times.from_unix(email.utils.mktime_tz(timetuple))
+        except (TypeError, ValueError):
+            pass
 
 
 class Context(object):
@@ -16,6 +27,18 @@ class Context(object):
 
     def build_absolute_uri(self, path):
         return self.request.build_absolute_uri('/%s%s' % (self.api.path, path))
+
+    def is_modified_since(self, dt):
+        """
+        Compares datetime `dt` with `If-Modified-Since` header value.
+        Returns True if `dt` is newer than `If-Modified-Since`, False otherwise.
+        """
+        if_modified_since = parse_http_date('if-modified-since', self.headers)
+
+        if if_modified_since:
+            return times.to_unix(dt.replace(microsecond=0)) > times.to_unix(if_modified_since)
+
+        return True
 
     @property
     def deserialized(self):
@@ -37,6 +60,9 @@ class Context(object):
 
     def NotFound(self, *args, **kwargs):
         return responses.NotFoundResponse(self, *args, **kwargs)
+
+    def NotModified(self, *args, **kwargs):
+        return responses.NotModifiedResponse(self, *args, **kwargs)
 
     def MethodNotAllowed(self, *args, **kwargs):
         return responses.MethodNotAllowedResponse(self, *args, **kwargs)
