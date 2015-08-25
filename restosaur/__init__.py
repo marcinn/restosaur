@@ -13,18 +13,24 @@ import decorators
 
 def autodiscover():
     from django.conf import settings
-    from django.utils.importlib import import_module
 
-    for app in settings.INSTALLED_APPS:
-        mod = import_module(app)
-        try:
-            import_module('%s.views' % app)
-        except:
-            pass
-        try:
-            import_module('%s.restapi' % app)
-        except:
-            pass
+    try:
+        from django.utils.module_loading import autodiscover_modules
+    except ImportError:
+        from django.utils.importlib import import_module
+        from django.utils.module_loading import module_has_submodule
+        autodiscover_modules = None
+
+    if autodiscover_modules:
+        autodiscover_modules('restapi')
+    else:
+        for app in settings.INSTALLED_APPS:
+            mod = import_module(app)
+            try:
+                import_module('%s.restapi' % app)
+            except:
+                if module_has_submodule(mod, 'restapi'):
+                    raise
 
 
 class API(object):
