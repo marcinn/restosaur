@@ -65,8 +65,16 @@ class API(object):
                         out[key]=qd.get(key)
                     return out
 
+                try:
+                    raw_body = request.body # Django may raise RawPostDataException sometimes;
+                                            # i.e. when processing POST multipart/form-data;
+                                            # In that cases we can't access raw body anymore, sorry
+                except:
+                    raw_body = None
+
                 ctx = Context(self, request=request, resource=resource,
-                    method=request.method, parameters=querydict_to_dict(request.GET))
+                    method=request.method, parameters=querydict_to_dict(request.GET), data=request.POST,
+                    files=request.FILES, raw=raw_body)
 
                 for middleware in self.middlewares:
                     try:

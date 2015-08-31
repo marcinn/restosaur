@@ -14,14 +14,17 @@ def parse_http_date(header, headers):
 
 class Context(object):
     def __init__(self, api, request, resource, method, parameters=None,
-            body=None):
+            body=None, data=None, files=None, raw=None):
         self.method = method
         self.api = api
         self.headers = {}
         self.request = request
         self.body = body
+        self.raw = raw
         self.resource = resource
-        self.parameters = parameters or {}
+        self.parameters = parameters or {} # GET
+        self.data = data or {} # POST
+        self.files = files or {} # FILES
         self.deserializer = None
         self.content_type = None
 

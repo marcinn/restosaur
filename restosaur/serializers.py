@@ -30,8 +30,27 @@ class DateTimeJsonSerializer(object):
         return obj
 
 
-class JsonSerializer(DateTimeJsonSerializer):
-    pass
+class JsonSerializer(object):
+    def __init__(self):
+        self._json = DateTimeJsonSerializer()
+
+    def loads(self, ctx):
+        return self._json.loads(ctx.raw)
+
+    def dumps(self, data):
+        return self._json.dumps(data)
+
+
+class MultiPartFormDataSerializer(object):
+    def loads(self, ctx):
+        from django.utils.datastructures import MultiValueDict
+        data = MultiValueDict()
+        data.update(ctx.data)
+        data.update(ctx.files)
+        return data
+
+    def dumps(self, data):
+        raise NotImplementedError
 
 
 class AlreadyRegistered(Exception):
@@ -66,6 +85,7 @@ class SerializersRegistry(object):
 
 default_serializers = SerializersRegistry()
 default_serializers.register('application/json', JsonSerializer())
+default_serializers.register('multipart/form-data', MultiPartFormDataSerializer())
 
 
 def register(mimetype, serializer):

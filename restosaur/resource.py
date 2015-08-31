@@ -106,7 +106,7 @@ class Resource(object):
             if mimetype:
                 ctx.deserializer = self._serializers[mimetype]
                 if request.body:
-                    ctx.body = self._serializers[mimetype].loads(request.body)
+                    ctx.body = self._serializers[mimetype].loads(ctx)
             elif not content_length:
                 self.body = None
             else:
