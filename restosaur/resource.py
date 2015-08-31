@@ -9,6 +9,7 @@ from collections import OrderedDict
 from .serializers import default_serializers
 from .headers import normalize_header_name
 from .context import Context
+from .exceptions import Http404
 
 
 log = logging.getLogger(__name__)
@@ -89,6 +90,8 @@ class Resource(object):
         return self._representations
 
     def __call__(self, ctx, *args, **kw):
+        from django.http import Http404 as DjangoHttp404
+
         method = ctx.method
         request = ctx.request
 
@@ -120,8 +123,15 @@ class Resource(object):
 
         log.debug('Calling %s, %s, %s' % (method, args, kw))
         if method in self._callbacks:
-            resp = self._callbacks[method](ctx, *args, **kw)
-            return http_response(resp)
+            try:
+                try:
+                    resp = self._callbacks[method](ctx, *args, **kw)
+                except DjangoHttp404:
+                    raise Http404
+                else:
+                    return http_response(resp)
+            except Http404:
+                return http_response(ctx.NotFound())
         else:
             return http_response(ctx.MethodNotAllowed())
 
