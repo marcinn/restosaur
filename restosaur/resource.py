@@ -21,6 +21,10 @@ def http_response(response):
     """
 
     from django.http import HttpResponse
+
+    if isinstance(response, HttpResponse):
+        return response
+
     from .headers import parse_accept_header, build_content_type_header
 
     context = response.context
