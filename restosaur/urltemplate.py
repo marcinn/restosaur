@@ -4,18 +4,16 @@ RE_PARAMS = re.compile('(/:([a-zA-Z_]+))')
 
 
 def to_url(urltemplate, params):
-    uri = None
+    uri = urltemplate
 
     params_to_replace = RE_PARAMS.findall(urltemplate)
 
     if params_to_replace:
         for needle, key in params_to_replace:
             try:
-                uri =urltemplate.replace(needle, '/%s' % params[key])
+                uri = uri.replace(needle, '/%s' % params[key])
             except KeyError:
                 pass
-    else:
-        uri = urltemplate
     return uri
 
 
