@@ -14,7 +14,7 @@ def parse_http_date(header, headers):
 
 class Context(object):
     def __init__(self, api, request, resource, method, parameters=None,
-            body=None, data=None, files=None, raw=None):
+            body=None, data=None, files=None, raw=None, extra=None):
         self.method = method
         self.api = api
         self.headers = {}
@@ -27,6 +27,7 @@ class Context(object):
         self.files = files or {} # FILES
         self.deserializer = None
         self.content_type = None
+        self.extra = extra or {}
 
     def build_absolute_uri(self, path):
         return self.request.build_absolute_uri('/%s%s' % (self.api.path, path))
