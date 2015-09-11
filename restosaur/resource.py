@@ -125,6 +125,9 @@ class Resource(object):
             filter(lambda x: x[0].startswith('HTTP_'), headers)))
         ctx.headers.update(http_headers)
 
+        # support for X-HTTP-METHOD-OVERRIDE
+        method = http_headers.get('x-http-method-override') or method
+
         log.debug('Calling %s, %s, %s' % (method, args, kw))
         if method in self._callbacks:
             try:
@@ -133,11 +136,14 @@ class Resource(object):
                 except DjangoHttp404:
                     raise Http404
                 else:
+                    if not resp:
+                        raise TypeError('Method `%s` does not return a response object' % self._callbacks[method])
                     return http_response(resp)
             except Http404:
                 return http_response(ctx.NotFound())
         else:
-            return http_response(ctx.MethodNotAllowed())
+            return http_response(ctx.MethodNotAllowed({'error': 'Method `%s` is not registered for resource `%s`' % (
+                method, self._path)}))
 
     def representation(self, name='default'):
         def wrapped(func):

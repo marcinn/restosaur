@@ -37,5 +37,8 @@ def build_content_type_header(content_type, vendor):
 
 
 def normalize_header_name(header):
-    return header.lower().replace('http_','').replace('_','-')
+    header = header.lower()
+    if header.startswith('http_'):
+        header = header.replace('http_', '', 1)
+    return header.replace('_','-')
 

@@ -46,37 +46,37 @@ class CreatedResponse(Response):
 
 class NoContentResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(NoContentResponse, self).__init__(context, data=None, status=204,
+        super(NoContentResponse, self).__init__(context, data=data, status=204,
                 headers=headers)
 
 
 class NotModifiedResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(NotModifiedResponse, self).__init__(context, data=None, status=304,
+        super(NotModifiedResponse, self).__init__(context, data=data, status=304,
                 headers=headers)
 
 
 class UnauthorizedResponse(Response):
-    def __init__(self, context, headers=None):
-        super(UnauthorizedResponse, self).__init__(context, data=None,
+    def __init__(self, context, data=None, headers=None):
+        super(UnauthorizedResponse, self).__init__(context, data=data,
                 status=401, headers=headers)
 
 
 class ForbiddenResponse(Response):
-    def __init__(self, context, headers=None):
-        super(ForbiddenResponse, self).__init__(context, data=None, status=403,
+    def __init__(self, context, data=None, headers=None):
+        super(ForbiddenResponse, self).__init__(context, data=data, status=403,
                 headers=headers)
 
 
 class NotFoundResponse(Response):
-    def __init__(self, context, headers=None):
-        super(NotFoundResponse, self).__init__(context, data=None, status=404,
+    def __init__(self, context, data=None, headers=None):
+        super(NotFoundResponse, self).__init__(context, data=data, status=404,
                 headers=headers)
 
 
 class MethodNotAllowedResponse(Response):
-    def __init__(self, context, headers=None):
-        super(MethodNotAllowedResponse, self).__init__(context, data=None,
+    def __init__(self, context, data=None, headers=None):
+        super(MethodNotAllowedResponse, self).__init__(context, data=data,
                 status=405, headers=headers)
 
 
