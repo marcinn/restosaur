@@ -62,7 +62,10 @@ class API(object):
                 def querydict_to_dict(qd):
                     out = {}
                     for key in qd:
-                        out[key]=qd.get(key)
+                        if len(qd.getlist(key))>1:
+                            out[key]=qd.getlist(key)
+                        else:
+                            out[key]=qd.get(key)
                     return out
 
                 try:
