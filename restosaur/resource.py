@@ -4,10 +4,16 @@ import mimeparse
 import responses
 import urltemplate
 import urllib
+
 from collections import OrderedDict
+from django.http import HttpResponse
 
 from .serializers import default_serializers
-from .headers import normalize_header_name
+from .headers import (
+        normalize_header_name,
+        parse_accept_header,
+        build_content_type_header,
+        )
 from .context import Context
 from .exceptions import Http404
 
@@ -15,43 +21,21 @@ from .exceptions import Http404
 log = logging.getLogger(__name__)
 
 
+DEFAULT_REPRESENTATION_KEY = '__default__'
+
+
 def http_response(response):
     """
     RESTResponse -> HTTPResponse factory
     """
 
-    from django.http import HttpResponse
-
     if isinstance(response, HttpResponse):
         return response
 
-    from .headers import parse_accept_header, build_content_type_header
-
     context = response.context
-
-    content_type = None
-    serializer = None
-    representation = None
-
-    if 'accept' in context.headers:
-        accepting = parse_accept_header(context.headers['accept'])
-        for content_type, representation, q in accepting:
-            if content_type == '*/*' or content_type == 'application/*':
-                content_type = 'application/json'
-            if context.resource.serializers.contains(content_type)\
-                and (not representation or representation in context.resource.representations):
-                try:
-                    representation = representation or context.resource.representations.keys()[0]
-                except IndexError:
-                    pass
-                serializer = context.resource.serializers[content_type]
-                content_type = build_content_type_header(content_type, representation)
-                break
-    else:
-        content_type = 'application/json'
-
-    if not content_type or not serializer:
-        return HttpResponse(status=406) # Not Acceptable
+    content_type = context.response_content_type
+    serializer = context.serializer
+    representation = context.representation_name
 
     if response.data is not None:
         content = response.serialize(serializer, response.data, representation)
@@ -125,6 +109,39 @@ class Resource(object):
             filter(lambda x: x[0].startswith('HTTP_'), headers)))
         ctx.headers.update(http_headers)
 
+        # match response representation, serializer and content type
+
+        response_content_type = None
+        response_serializer = None
+        response_representation = None
+
+        if 'accept' in ctx.headers:
+            accepting = parse_accept_header(ctx.headers['accept'])
+            for content_type, representation, q in accepting:
+                if content_type == '*/*' or content_type == 'application/*':
+                    content_type = 'application/json'
+                if ctx.resource.serializers.contains(content_type)\
+                    and (not representation or representation in ctx.resource.representations):
+                    try:
+                        response_representation = representation or DEFAULT_REPRESENTATION_KEY
+                    except IndexError:
+                        pass
+                    response_serializer = ctx.resource.serializers[content_type]
+                    content_type = build_content_type_header(content_type, representation)
+                    break
+        else:
+            content_type = 'application/json'
+
+        response_content_type = content_type
+
+        if not response_content_type or not response_serializer:
+            return HttpResponse(status=406) # Not Acceptable
+
+        ctx.representation_name = response_representation
+        ctx.response_content_type = response_content_type
+        ctx.serializer = response_serializer
+
+
         # support for X-HTTP-METHOD-OVERRIDE
         method = http_headers.get('x-http-method-override') or method
 
@@ -145,7 +162,7 @@ class Resource(object):
             return http_response(ctx.MethodNotAllowed({'error': 'Method `%s` is not registered for resource `%s`' % (
                 method, self._path)}))
 
-    def representation(self, name='default'):
+    def representation(self, name=DEFAULT_REPRESENTATION_KEY):
         def wrapped(func):
             self._representations[name] = func
             return func
@@ -172,7 +189,7 @@ class Resource(object):
 
         if representation is None:
             try:
-                convert = self.representations.values()[0]
+                convert = self.representations[DEFAULT_REPRESENTATION_KEY]
             except IndexError:
                 convert = lambda x, ctx: x  # pass through
         else:
