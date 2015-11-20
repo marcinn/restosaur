@@ -5,13 +5,14 @@ import times
 
 class Response(object):
     def __init__(self, context, data=None, status=200, headers=None,
-            last_modified=None):
+            last_modified=None, extra=None):
         self.headers = {}
         self.headers.update(headers or {})
         self.representation = None
         self.content_type = None
         self.context = context
         self.status = status
+        self.extra = extra
         self.data = data
         if last_modified:
             self.set_last_modified(last_modified)
@@ -27,15 +28,17 @@ class Response(object):
         else:
             self.headers.pop('Last-Modified', None)
 
-    def serialize(self, serializer, data, representation):
-        if data is None:
+    def serialize(self, data, representation):
+        if data is None and not self.extra:
             return ''
         else:
+            data = (data or {})
+            data.update(self.extra or {})
             if self.status >= 200 and self.status <300:
                 output = self.context.resource.convert(self.context, data, representation)
             else:
                 output = data
-            return serializer.dumps(output)
+            return output
 
 
 class CreatedResponse(Response):
@@ -81,18 +84,19 @@ class MethodNotAllowedResponse(Response):
 
 
 class CollectionResponse(Response):
-    def __init__(self, context, iterable, totalCount=None, key=None, headers=None):
+    def __init__(self, context, iterable, totalCount=None, key=None, **kwargs):
         super(CollectionResponse, self).__init__(context, data=iterable,
-                headers=headers)
+                **kwargs)
         self.key = key or 'items'
         self.totalCount = totalCount
 
-    def serialize(self, serializer, iterable, representation):
+    def serialize(self, iterable, representation):
         resp = {
                 self.key: map(lambda x: self.context.resource.convert(self.context, x, representation), iterable),
                 'totalCount': self.totalCount if self.totalCount is not None else len(iterable),
                 }
-        return serializer.dumps(resp)
+        resp.update(self.extra or {})
+        return resp
 
 
 class EntityResponse(Response):

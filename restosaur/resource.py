@@ -38,7 +38,7 @@ def http_response(response):
     representation = context.representation_name
 
     if response.data is not None:
-        content = response.serialize(serializer, response.data, representation)
+        content = serializer.dumps(response.serialize(response.data, representation))
     else:
         content = ''
 
@@ -116,26 +116,31 @@ class Resource(object):
         response_representation = None
 
         if 'accept' in ctx.headers:
-            accepting = parse_accept_header(ctx.headers['accept'])
-            for content_type, representation, q in accepting:
-                if content_type == '*/*' or content_type == 'application/*':
-                    content_type = 'application/json'
-                if ctx.resource.serializers.contains(content_type)\
-                    and (not representation or representation in ctx.resource.representations):
-                    try:
-                        response_representation = representation or DEFAULT_REPRESENTATION_KEY
-                    except IndexError:
-                        pass
-                    response_serializer = ctx.resource.serializers[content_type]
-                    content_type = build_content_type_header(content_type, representation)
-                    break
+            try:
+                accepting = parse_accept_header(ctx.headers['accept'])
+            except ValueError:
+                content_type = None
+            else:
+                for content_type, representation, q in accepting:
+                    if content_type == '*/*' or content_type == 'application/*':
+                        content_type = 'application/json'
+                    if ctx.resource.serializers.contains(content_type)\
+                        and (not representation or representation in ctx.resource.representations):
+                        try:
+                            response_representation = representation or DEFAULT_REPRESENTATION_KEY
+                        except IndexError:
+                            pass
+                        response_serializer = ctx.resource.serializers[content_type]
+                        content_type = build_content_type_header(content_type, representation)
+                        break
         else:
             content_type = 'application/json'
 
         response_content_type = content_type
 
         if not response_content_type or not response_serializer:
-            return HttpResponse(status=406) # Not Acceptable
+            return HttpResponse('Not acceptable `%s`' % ctx.headers.get('accept'),
+                    status=406) # Not Acceptable
 
         ctx.representation_name = response_representation
         ctx.response_content_type = response_content_type

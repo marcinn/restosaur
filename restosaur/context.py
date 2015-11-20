@@ -1,6 +1,9 @@
 import responses
 import email
 import times
+import urllib
+
+from django.utils.encoding import force_bytes # todo: implement own conversion utility
 
 
 def parse_http_date(header, headers):
@@ -29,8 +32,30 @@ class Context(object):
         self.content_type = None
         self.extra = extra or {}
 
-    def build_absolute_uri(self, path):
-        return self.request.build_absolute_uri('/%s%s' % (self.api.path, path))
+    def build_absolute_uri(self, path=None, parameters=None):
+        """
+        Returns absolute uri to the specified `path` with optional
+        query string `parameters`.
+
+        If no `path` is provided, the current request full path
+        (including query string) will be used and extended by
+        optional `parameters`.
+        """
+
+        params = {}
+        if path:
+            uri = self.request.build_absolute_uri('/%s%s' % (self.api.path, path))
+        else:
+            params = dict(self.parameters)
+            uri = self.request.build_absolute_uri(self.request.path)
+
+        enc = self.request.GET.encoding # todo: change to internal restosaur settings
+
+        params.update(parameters or {})
+        params = dict(map(lambda x: (force_bytes(x[0], enc), force_bytes(x[1], enc)),
+            params.items()))
+
+        return '%s?%s' % (uri, urllib.urlencode(params))
 
     def is_modified_since(self, dt):
         """
