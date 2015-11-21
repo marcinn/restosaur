@@ -1,12 +1,10 @@
 import unittest
 import datetime
 
-from django.test import RequestFactory
 from django.conf import settings
 
 settings.configure(**{
     'ALLOWED_HOSTS': ['testserver'],
-    'CACHES': {},
     })
 
 
@@ -16,10 +14,14 @@ from restosaur.context import Context
 
 class ContextTestCase(unittest.TestCase):
     def setUp(self):
+        from django.test import RequestFactory
+
         super(ContextTestCase, self).setUp()
+
         def create_context(method, path, resource, **kwargs):
             return Context(self.api, getattr(self.rqfactory, method)(path),
                     resource, method, **kwargs)
+
         self.api = API('/')
         self.rqfactory = RequestFactory()
         self.factory = create_context
