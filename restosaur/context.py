@@ -17,10 +17,10 @@ def parse_http_date(header, headers):
 
 class Context(object):
     def __init__(self, api, request, resource, method, parameters=None,
-            body=None, data=None, files=None, raw=None, extra=None):
+            body=None, data=None, files=None, raw=None, extra=None, headers=None):
         self.method = method
         self.api = api
-        self.headers = {}
+        self.headers = headers or {}
         self.request = request
         self.body = body
         self.raw = raw
@@ -55,7 +55,10 @@ class Context(object):
         params = dict(map(lambda x: (force_bytes(x[0], enc), force_bytes(x[1], enc)),
             params.items()))
 
-        return '%s?%s' % (uri, urllib.urlencode(params))
+        if params:
+            return '%s?%s' % (uri, urllib.urlencode(params))
+        else:
+            return uri
 
     def is_modified_since(self, dt):
         """
