@@ -1,5 +1,3 @@
 mimeparse
 times>=0.7
 nose
-django
-coverage
