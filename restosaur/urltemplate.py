@@ -17,6 +17,15 @@ def to_url(urltemplate, params):
     return uri
 
 
+def remove_parameters(urltemplate):
+    uri = urltemplate
+
+    params_to_replace = RE_PARAMS.findall(urltemplate)
+    for needle, key in params_to_replace:
+        uri = uri.replace(needle, '')
+    return uri
+
+
 def to_django_urlpattern(path):
     return RE_PARAMS.sub('/(?P<\\2>[^/]+)', path)
 

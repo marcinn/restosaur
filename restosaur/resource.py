@@ -51,10 +51,16 @@ def http_response(response):
     return httpresp
 
 
+def resource_name_from_path(path):
+    return urltemplate.remove_parameters(path).strip('/')
+
+
 class Resource(object):
-    def __init__(self, path, serializers=None):
+    def __init__(self, path, name=None, expose=False, serializers=None):
         self._path = path
         self._callbacks = {}
+        self._expose = expose
+        self._name = name or resource_name_from_path(path)
         self._representations = OrderedDict()
         self._serializers = serializers or default_serializers
         # register aliases for the decorators
@@ -68,6 +74,18 @@ class Resource(object):
             self._callbacks[method] = view
             return view
         return wrapper
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def expose(self):
+        return self._expose
+
+    @property
+    def path(self):
+        return self._path
 
     @property
     def serializers(self):
