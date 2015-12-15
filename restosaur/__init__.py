@@ -75,8 +75,11 @@ class API(object):
                 except:
                     raw_body = None
 
+                parameters = {}
+                parameters.update(request.resolver_match.kwargs)
+                parameters.update(querydict_to_dict(request.GET))
                 ctx = Context(self, request=request, resource=resource,
-                    method=request.method, parameters=querydict_to_dict(request.GET), data=request.POST,
+                    method=request.method, parameters=parameters, data=request.POST,
                     files=request.FILES, raw=raw_body)
 
                 for middleware in self.middlewares:

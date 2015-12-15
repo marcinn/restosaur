@@ -5,7 +5,7 @@ import times
 
 class Response(object):
     def __init__(self, context, data=None, status=200, headers=None,
-            last_modified=None, extra=None):
+            last_modified=None, extra=None, add_links=True, links_key='_links'):
         self.headers = {}
         self.headers.update(headers or {})
         self.representation = None
@@ -13,6 +13,8 @@ class Response(object):
         self.context = context
         self.status = status
         self.extra = extra
+        self.links_key = links_key
+        self.add_links = add_links
         self.data = data
         if last_modified:
             self.set_last_modified(last_modified)
@@ -36,9 +38,25 @@ class Response(object):
                 output = {}
                 output.update(self.extra or {})
                 output.update(self.context.resource.convert(self.context, data, representation))
+                self._add_links(output, data, representation)
             else:
                 output = data
             return output
+
+    def _serialize_links(self, data, representation):
+        links = {}
+        if self.add_links and self.context.resource._links:
+            for key in self.context.resource._links:
+                method, linked_resource = self.context.resource._links[key]
+                links[key]={
+                    'uri': linked_resource.uri(self.context, params=self.context.parameters),
+                    'method': method.upper(),
+                    }
+        return links
+
+    def _add_links(self, resp, data, representation):
+        resp[self.links_key]=self._serialize_links(data, representation)
+        return resp
 
 
 class CreatedResponse(Response):
@@ -96,6 +114,7 @@ class CollectionResponse(Response):
                 'totalCount': self.totalCount if self.totalCount is not None else len(iterable),
                 }
         resp.update(self.extra or {})
+        self._add_links(resp, iterable, representation)
         return resp
 
 

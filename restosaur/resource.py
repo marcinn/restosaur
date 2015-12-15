@@ -60,6 +60,7 @@ class Resource(object):
         self._path = path
         self._callbacks = {}
         self._expose = expose
+        self._links = {}
         self._name = name or resource_name_from_path(path)
         self._representations = OrderedDict()
         self._serializers = serializers or default_serializers
@@ -67,11 +68,14 @@ class Resource(object):
         for verb in ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'):
             setattr(self, verb.lower(), functools.partial(self._decorator, verb))
 
-    def _decorator(self, method):
+    def _decorator(self, method, link_to=None, link_as=None):
         def wrapper(view):
             if method in self._callbacks:
                 raise ValueError('Already registered')
             self._callbacks[method] = view
+            if link_to:
+                key = link_as or link_to.__name__
+                link_to._links[key] = (method, self)
             return view
         return wrapper
 
