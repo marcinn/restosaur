@@ -55,7 +55,10 @@ class Response(object):
         return links
 
     def _add_links(self, resp, data, representation):
-        resp[self.links_key]=self._serialize_links(data, representation)
+        if not self.links_key in resp:
+            resp[self.links_key] = {}
+        resp[self.links_key].update(
+                self._serialize_links(data, representation))
         return resp
 
 
