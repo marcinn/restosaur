@@ -160,7 +160,7 @@ class Resource(object):
 
         response_content_type = content_type
 
-        if not response_content_type or not response_serializer:
+        if content_length and (not response_content_type or not response_serializer):
             return HttpResponse('Not acceptable `%s`' % ctx.headers.get('accept'),
                     status=406) # Not Acceptable
 
