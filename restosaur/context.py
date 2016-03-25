@@ -93,6 +93,9 @@ class Context(object):
     def NotFound(self, *args, **kwargs):
         return responses.NotFoundResponse(self, *args, **kwargs)
 
+    def SeeOther(self, *args, **kwargs):
+        return responses.SeeOtherResponse(self, *args, **kwargs)
+
     def NotModified(self, *args, **kwargs):
         return responses.NotModifiedResponse(self, *args, **kwargs)
 

@@ -74,6 +74,14 @@ class NoContentResponse(Response):
                 headers=headers)
 
 
+class SeeOtherResponse(Response):
+    def __init__(self, context, uri, data=None, headers=None):
+        headers = headers or {}
+        headers['Location'] = uri
+        super(SeeOtherResponse, self).__init__(context, data=data,
+                status=303, headers=headers)
+
+
 class NotModifiedResponse(Response):
     def __init__(self, context, data=None, headers=None):
         super(NotModifiedResponse, self).__init__(context, data=data, status=304,
