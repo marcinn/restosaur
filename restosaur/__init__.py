@@ -11,7 +11,7 @@ import filters
 import decorators
 
 
-def autodiscover():
+def autodiscover(module_name='restapi'):
     from django.conf import settings
 
     try:
@@ -22,14 +22,14 @@ def autodiscover():
         autodiscover_modules = None
 
     if autodiscover_modules:
-        autodiscover_modules('restapi')
+        autodiscover_modules(module_name)
     else:
         for app in settings.INSTALLED_APPS:
             mod = import_module(app)
             try:
-                import_module('%s.restapi' % app)
+                import_module('%s.%s' % (app, module_name))
             except:
-                if module_has_submodule(mod, 'restapi'):
+                if module_has_submodule(mod, module_name):
                     raise
 
 
@@ -116,7 +116,10 @@ class API(object):
         from django.conf.urls import patterns, include
         return patterns('', (r'^', include(self.get_urls())))
 
-    def autodiscover(self):
-        autodiscover()
+    def autodiscover(self, *args, **kw):
+        """
+        Shortcut for `restosaur.autodiscover()`
+        """
+        autodiscover(*args, **kw)
 
 
