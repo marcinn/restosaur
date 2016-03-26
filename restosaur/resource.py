@@ -33,17 +33,20 @@ def http_response(response):
         return response
 
     context = response.context
-    content_type = context.response_content_type
-    serializer = context.serializer
-    representation = context.representation_name
 
     if response.data is not None:
+        content_type = context.response_content_type
+        serializer = context.serializer
+        representation = context.representation_name
         content = serializer.dumps(response.serialize(response.data, representation))
     else:
         content = ''
+        content_type = 'application/json'
 
     httpresp = HttpResponse(content, status=response.status)
-    httpresp['Content-Type'] = content_type
+
+    if content_type:
+        httpresp['Content-Type'] = content_type
 
     for header, value in response.headers.items():
         httpresp[header]=value
@@ -122,7 +125,7 @@ class Resource(object):
             else:
                 return http_response(ctx.NotAcceptable())
 
-        ctx.content_type = request.META['CONTENT_TYPE']
+        ctx.content_type = request.META.get('CONTENT_TYPE')
 
         # prepare request headers
 
@@ -146,17 +149,24 @@ class Resource(object):
                 for content_type, representation, q in accepting:
                     if content_type == '*/*' or content_type == 'application/*':
                         content_type = 'application/json'
+                        response_representation = DEFAULT_REPRESENTATION_KEY
                     if ctx.resource.serializers.contains(content_type)\
-                        and (not representation or representation in ctx.resource.representations):
-                        try:
-                            response_representation = representation or DEFAULT_REPRESENTATION_KEY
-                        except IndexError:
-                            pass
+                            and (not representation or representation in ctx.resource.representations):
+                        response_representation = representation or DEFAULT_REPRESENTATION_KEY
                         response_serializer = ctx.resource.serializers[content_type]
                         content_type = build_content_type_header(content_type, representation)
                         break
+
+                if content_type and not response_serializer:
+                    try:
+                        response_serializer = ctx.resource.serializers[content_type]
+                    except KeyError:
+                        return http_response(ctx.NotAcceptable())
+
         else:
             content_type = 'application/json'
+            response_serializer = ctx.resource.serializers[content_type]
+            response_representation = DEFAULT_REPRESENTATION_KEY
 
         response_content_type = content_type
 
@@ -182,6 +192,9 @@ class Resource(object):
                 else:
                     if not resp:
                         raise TypeError('Method `%s` does not return a response object' % self._callbacks[method])
+                    if not response_representation and resp.data is not None:
+                        return http_response(ctx.NotAcceptable())
+
                     return http_response(resp)
             except Http404:
                 return http_response(ctx.NotFound())
@@ -214,10 +227,10 @@ class Resource(object):
         within a `context`
         """
 
-        if representation is None:
+        if representation is None or representation==DEFAULT_REPRESENTATION_KEY:
             try:
                 convert = self.representations[DEFAULT_REPRESENTATION_KEY]
-            except IndexError:
+            except KeyError:
                 convert = lambda x, ctx: x  # pass through
         else:
             convert = self.representations[representation]

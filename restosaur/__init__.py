@@ -52,63 +52,15 @@ class API(object):
     def get_urls(self):
         from django.conf.urls import patterns, url, include
         from django.views.decorators.csrf import csrf_exempt
-        from .context import Context
+        from .dispatch import resource_dispatcher_factory
         import urltemplate
 
         urls = []
 
-        def middleware_executor(resource):
-            def process(request, *args, **kw):
-                def querydict_to_dict(qd):
-                    out = {}
-                    for key in qd:
-                        if len(qd.getlist(key))>1:
-                            out[key]=qd.getlist(key)
-                        else:
-                            out[key]=qd.get(key)
-                    return out
-
-                try:
-                    raw_body = request.body # Django may raise RawPostDataException sometimes;
-                                            # i.e. when processing POST multipart/form-data;
-                                            # In that cases we can't access raw body anymore, sorry
-                except:
-                    raw_body = None
-
-                parameters = {}
-                parameters.update(request.resolver_match.kwargs)
-                parameters.update(querydict_to_dict(request.GET))
-                ctx = Context(self, request=request, resource=resource,
-                    method=request.method, parameters=parameters, data=request.POST,
-                    files=request.FILES, raw=raw_body)
-
-                for middleware in self.middlewares:
-                    try:
-                        method = middleware.process_request
-                    except AttributeError:
-                        pass
-                    else:
-                        if method(request, ctx) == False:
-                            break
-
-                response = resource(ctx, *args, **kw)
-
-                for middleware in self.middlewares:
-                    try:
-                        method = middleware.process_response
-                    except AttributeError:
-                        pass
-                    else:
-                        if method(request, response, ctx) == False:
-                            break
-
-                return response
-            return process
-
         for resource in self.resources:
             path = urltemplate.to_django_urlpattern(resource._path)
             urls.append(url('^%s$' % path,
-                csrf_exempt(middleware_executor(resource))))
+                csrf_exempt(resource_dispatcher_factory(self, resource))))
 
         return [url('^%s' % self.path, include(patterns('', *urls)))]
 

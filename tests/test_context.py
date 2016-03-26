@@ -1,13 +1,6 @@
 import unittest
 import datetime
 
-from django.conf import settings
-
-settings.configure(**{
-    'ALLOWED_HOSTS': ['testserver'],
-    })
-
-
 from restosaur import API, responses
 from restosaur.context import Context
 
