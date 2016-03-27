@@ -12,13 +12,19 @@ class ContextTestCase(unittest.TestCase):
 
         super(ContextTestCase, self).setUp()
 
-        def create_context(method, path, resource, **kwargs):
-            return Context(self.api, getattr(self.rqfactory, method)(path),
+        def create_context(method, path, resource, api=None, **kwargs):
+            api = api or self.api
+            return Context(api, getattr(self.rqfactory, method)(path),
                     resource, method, **kwargs)
 
         self.api = API('/')
+        self.api2 = API('webapi/')
+        self.api3 = API('webapi')
         self.rqfactory = RequestFactory()
         self.factory = create_context
+        self.ctx = create_context('get', '', lambda ctx: None, api=self.api)
+        self.ctx2 = create_context('get', '', lambda ctx: None, api=self.api2)
+        self.ctx3 = create_context('get', '', lambda ctx: None, api=self.api3)
 
     def test_deserialized_property(self):
         ctx = self.factory('get', '/test/', lambda ctx: None, body='body')
@@ -98,6 +104,30 @@ class TestContextBuilidURI(ContextTestCase):
         ctx = self.factory('get', '/bar/', lambda ctx: None)
         url = ctx.url_for(res, pk='test')
         self.assertEqual(url, 'http://testserver/foo/test')
+
+    def test_generating_uri_for_prefixed_api_and_slash_as_path(self):
+        self.assertEqual(self.ctx2.build_absolute_uri('/'),
+                'http://testserver/webapi/')
+
+    def test_generating_uri_for_prefixed_api_and_path_wihout_preceding_slash(self):
+        self.assertEqual(self.ctx2.build_absolute_uri('foo'),
+                'http://testserver/webapi/foo')
+
+    def test_generating_uri_for_prefixed_api_and_path_wihout_preceding_slash_but_ending_with_slash(self):
+        self.assertEqual(self.ctx2.build_absolute_uri('foo/'),
+                'http://testserver/webapi/foo/')
+
+    def test_generating_uri_for_prefixed_api_without_slash_and_slash_as_path(self):
+        self.assertEqual(self.ctx3.build_absolute_uri('/'),
+                'http://testserver/webapi/')
+
+    def test_generating_uri_for_prefixed_api_without_slash_and_path_wihout_preceding_slash(self):
+        self.assertEqual(self.ctx3.build_absolute_uri('foo'),
+                'http://testserver/webapi/foo')
+
+    def test_generating_uri_for_prefixed_api_without_slash_and_path_wihout_preceding_slash_but_ending_with_slash(self):
+        self.assertEqual(self.ctx3.build_absolute_uri('foo/'),
+                'http://testserver/webapi/foo/')
 
 
 class TestContextIfModifiedSince(ContextTestCase):
