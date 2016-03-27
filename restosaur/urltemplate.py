@@ -3,7 +3,7 @@ import re
 RE_PARAMS = re.compile('(/:([a-zA-Z_]+))')
 
 
-def to_url(urltemplate, params):
+def to_url(urltemplate, params, strict=False):
     uri = urltemplate
 
     params_to_replace = RE_PARAMS.findall(urltemplate)
@@ -13,7 +13,8 @@ def to_url(urltemplate, params):
             try:
                 uri = uri.replace(needle, '/%s' % params[key])
             except KeyError:
-                pass
+                if strict:
+                    raise
     return uri
 
 

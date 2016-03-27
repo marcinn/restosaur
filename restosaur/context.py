@@ -2,6 +2,7 @@ import responses
 import email
 import times
 import urllib
+import urlparse
 
 from django.utils.encoding import force_bytes # todo: implement own conversion utility
 
@@ -42,12 +43,20 @@ class Context(object):
         optional `parameters`.
         """
 
+        def build_uri(path):
+            current = 'http%s://%s%s' % ('s' if self.request.is_secure() else '',
+                    self.request.get_host(), self.request.path)
+            return urlparse.urljoin(current, path)
+
         params = {}
         if path:
-            uri = self.request.build_absolute_uri('/%s%s' % (self.api.path, path))
+            full_path = u'/'.join(filter(None, (self.api.path+path).split('/')))
+            if path.endswith('/'):
+                full_path+='/'
+            uri = build_uri('/'+full_path)
         else:
             params = dict(self.parameters)
-            uri = self.request.build_absolute_uri(self.request.path)
+            uri = build_uri(self.request.path)
 
         enc = self.request.GET.encoding # todo: change to internal restosaur settings
 
@@ -59,6 +68,12 @@ class Context(object):
             return '%s?%s' % (uri, urllib.urlencode(params))
         else:
             return uri
+
+    def url_for(self, resource, **kwargs):
+        """
+        Shortcut wrapper of `resource.uri()`
+        """
+        return resource.uri(self, params=kwargs)
 
     def is_modified_since(self, dt):
         """
