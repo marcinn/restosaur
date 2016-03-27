@@ -147,3 +147,37 @@ class ValidationErrorResponse(Response):
         super(ValidationErrorResponse, self).__init__(context, data=resp,
                 status=422, headers=headers)
 
+
+class InternalErrorResponse(Response):
+    def __init__(self, context, data=None, headers=None):
+        super(InternalErrorResponse, self).__init__(context, data=data,
+                status=500, headers=headers)
+
+
+class NotImplementedResponse(Response):
+    def __init__(self, context, data=None, headers=None):
+        super(NotImplementedResponse, self).__init__(context, data=data,
+                status=501, headers=headers)
+
+
+def exception_response_factory(context, ex, tb=None, extra=None):
+    import traceback
+
+    if isinstance(ex, NotImplementedError):
+        cls = NotImplementedResponse
+    else:
+        cls = InternalErrorResponse
+
+    data = {}
+    data.update(extra or {})
+    data.update({
+        'error': unicode(ex),
+        })
+
+    if tb:
+        def stack_trace(x):
+            return dict(zip(['file','line','fn','source'], x))
+        data['traceback'] = map(stack_trace, traceback.extract_tb(tb))
+
+    return cls(context=context, data=data)
+

@@ -4,9 +4,11 @@ import mimeparse
 import responses
 import urltemplate
 import urllib
+import sys
 
 from collections import OrderedDict
 from django.http import HttpResponse
+from django.conf import settings
 
 from .serializers import default_serializers
 from .headers import (
@@ -198,6 +200,13 @@ class Resource(object):
                     return http_response(resp)
             except Http404:
                 return http_response(ctx.NotFound())
+            except Exception, ex:
+                if settings.DEBUG:
+                    tb = sys.exc_info()[2]
+                else:
+                    tb = None
+                resp = responses.exception_response_factory(ctx, ex, tb)
+                return http_response(resp)
         else:
             return http_response(ctx.MethodNotAllowed({'error': 'Method `%s` is not registered for resource `%s`' % (
                 method, self._path)}))
