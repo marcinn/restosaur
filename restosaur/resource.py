@@ -206,6 +206,13 @@ class Resource(object):
                 else:
                     tb = None
                 resp = responses.exception_response_factory(ctx, ex, tb)
+                log.exception('Internal Server Error: %s', ctx.request.path,
+                    exc_info=sys.exc_info(),
+                    extra={
+                        'status_code': resp.status,
+                        'context': ctx,
+                    }
+                )
                 return http_response(resp)
         else:
             return http_response(ctx.MethodNotAllowed({'error': 'Method `%s` is not registered for resource `%s`' % (

@@ -59,6 +59,8 @@ class API(object):
 
         for resource in self.resources:
             path = urltemplate.to_django_urlpattern(resource._path)
+            if path.startswith('/'):
+                path=path[1:]
             urls.append(url('^%s$' % path,
                 csrf_exempt(resource_dispatcher_factory(self, resource))))
 
