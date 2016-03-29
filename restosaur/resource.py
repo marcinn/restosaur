@@ -4,6 +4,7 @@ import mimeparse
 import responses
 import urltemplate
 import urllib
+import warnings
 import sys
 
 from collections import OrderedDict
@@ -69,6 +70,15 @@ class Resource(object):
         self._name = name or resource_name_from_path(path)
         self._representations = OrderedDict()
         self._serializers = serializers or default_serializers
+
+        if expose:
+            warnings.warn('`expose` argument will be removed in Restosaur 0.7'\
+                    '\nUse `restosaur.contrib.apiroot` for exposing resources',
+                    DeprecationWarning, stacklevel=3)
+        if name:
+            warnings.warn('`name` argument will be removed in Restosaur 0.7',
+                    DeprecationWarning, stacklevel=3)
+
         # register aliases for the decorators
         for verb in ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'):
             setattr(self, verb.lower(), functools.partial(self._decorator, verb))

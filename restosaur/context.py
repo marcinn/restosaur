@@ -3,8 +3,11 @@ import email
 import times
 import urllib
 import urlparse
+import types
 
 from django.utils.encoding import force_bytes # todo: implement own conversion utility
+
+from .loading import import_string
 
 
 def parse_http_date(header, headers):
@@ -14,6 +17,10 @@ def parse_http_date(header, headers):
             return times.from_unix(email.utils.mktime_tz(timetuple))
         except (TypeError, ValueError):
             pass
+
+
+def load_resource(string_path):
+    return import_string(string_path)
 
 
 class Context(object):
@@ -73,6 +80,8 @@ class Context(object):
         """
         Shortcut wrapper of `resource.uri()`
         """
+        if isinstance(resource, types.StringTypes):
+            resource = load_resource(resource)
         return resource.uri(self, params=kwargs)
 
     def is_modified_since(self, dt):
