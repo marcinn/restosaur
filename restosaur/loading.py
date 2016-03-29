@@ -1,3 +1,4 @@
+from importlib import import_module
 import sys
 
 
@@ -20,4 +21,8 @@ def import_string(dotted_path):
         msg = 'Module "%s" does not define a "%s" attribute/class' % (
             module_path, class_name)
         raise ImportError(msg)
+
+
+def load_resource(string_path):
+    return import_string(string_path)
 

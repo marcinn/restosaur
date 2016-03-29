@@ -6,6 +6,7 @@ import urltemplate
 import urllib
 import warnings
 import sys
+import types
 
 from collections import OrderedDict
 from django.http import HttpResponse
@@ -19,6 +20,7 @@ from .headers import (
         )
 from .context import Context
 from .exceptions import Http404
+from .loading import load_resource
 
 
 log = logging.getLogger(__name__)
@@ -89,8 +91,12 @@ class Resource(object):
                 raise ValueError('Already registered')
             self._callbacks[method] = view
             if link_to:
-                key = link_as or link_to.__name__
-                link_to._links[key] = (method, self)
+                if isinstance(link_to, types.StringTypes):
+                    link_resource = load_resource(link_to)
+                else:
+                    link_resource = link_to
+                key = link_as or link_resource.__name__
+                link_resource._links[key] = (method, self)
             return view
         return wrapper
 

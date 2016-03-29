@@ -7,7 +7,7 @@ import types
 
 from django.utils.encoding import force_bytes # todo: implement own conversion utility
 
-from .loading import import_string
+from .loading import load_resource
 
 
 def parse_http_date(header, headers):
@@ -17,10 +17,6 @@ def parse_http_date(header, headers):
             return times.from_unix(email.utils.mktime_tz(timetuple))
         except (TypeError, ValueError):
             pass
-
-
-def load_resource(string_path):
-    return import_string(string_path)
 
 
 class Context(object):
