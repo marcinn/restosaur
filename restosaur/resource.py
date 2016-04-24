@@ -12,7 +12,6 @@ from collections import OrderedDict
 from django.http import HttpResponse
 from django.conf import settings
 
-from .serializers import default_serializers
 from .headers import (
         normalize_header_name,
         parse_accept_header,
@@ -26,7 +25,17 @@ from .loading import load_resource
 log = logging.getLogger(__name__)
 
 
-DEFAULT_REPRESENTATION_KEY = '__default__'
+def _content_type_serializer(content_type):
+    maintype,subtype=content_type.split('/')
+
+    try:
+        vnd,subtype=subtype.split('+')
+    except ValueError:
+        pass
+    finally:
+        serializer = '%s/%s' % (maintype, subtype)
+
+    return serializer
 
 
 def http_response(response):
@@ -64,49 +73,31 @@ def resource_name_from_path(path):
 
 
 class Resource(object):
-    def __init__(self, path, name=None, expose=False, serializers=None):
+    def __init__(self,
+            api, path, serializers=None,
+            default_representation=None, scope=None):
+
+        self._api = api
+        self._scope = self
         self._path = path
         self._callbacks = {}
-        self._expose = expose
-        self._links = {}
-        self._name = name or resource_name_from_path(path)
         self._representations = OrderedDict()
-        self._serializers = serializers or default_serializers
+        self._serializers = serializers or self._api.serializers
 
-        if expose:
-            warnings.warn('`expose` argument will be removed in Restosaur 0.7'\
-                    '\nUse `restosaur.contrib.apiroot` for exposing resources',
-                    DeprecationWarning, stacklevel=3)
-        if name:
-            warnings.warn('`name` argument will be removed in Restosaur 0.7',
-                    DeprecationWarning, stacklevel=3)
+        self._default_representation = default_representation\
+                or self._api.default_representation
 
         # register aliases for the decorators
         for verb in ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'):
             setattr(self, verb.lower(), functools.partial(self._decorator, verb))
 
-    def _decorator(self, method, link_to=None, link_as=None):
+    def _decorator(self, method):
         def wrapper(view):
             if method in self._callbacks:
                 raise ValueError('Already registered')
             self._callbacks[method] = view
-            if link_to:
-                if isinstance(link_to, types.StringTypes):
-                    link_resource = load_resource(link_to)
-                else:
-                    link_resource = link_to
-                key = link_as or link_resource.__name__
-                link_resource._links[key] = (method, self)
             return view
         return wrapper
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def expose(self):
-        return self._expose
 
     @property
     def path(self):
@@ -118,7 +109,7 @@ class Resource(object):
 
     @property
     def representations(self):
-        return self._representations
+        return self._api.representations[self._scope]
 
     def __call__(self, ctx, *args, **kw):
         from django.http import Http404 as DjangoHttp404
@@ -164,27 +155,32 @@ class Resource(object):
             except ValueError:
                 content_type = None
             else:
-                for content_type, representation, q in accepting:
-                    if content_type == '*/*' or content_type == 'application/*':
-                        content_type = 'application/json'
-                        response_representation = DEFAULT_REPRESENTATION_KEY
-                    if ctx.resource.serializers.contains(content_type)\
-                            and (not representation or representation in ctx.resource.representations):
-                        response_representation = representation or DEFAULT_REPRESENTATION_KEY
-                        response_serializer = ctx.resource.serializers[content_type]
+                for serializer, vnd, q in accepting:
+                    maintype,subtype = serializer.split('/')
+                    content_type = '%s/%s+%s' % (maintype, vnd, subtype)
+                    if content_type == '*/*':
+                        content_type = self._default_representation
+                    elif content_type.split('/')[1]=='*':
+                        raise NotImplementedError
+                    if 'content_type' in ctx.resource.representations\
+                            and serializer in ctx.resource.serializers:
+                        response_representation = content_type
+                        response_serializer = ctx.resource.serializers[serializer]
                         content_type = build_content_type_header(content_type, representation)
                         break
 
                 if content_type and not response_serializer:
+                    serializer = _content_type_serializer(content_type)
                     try:
-                        response_serializer = ctx.resource.serializers[content_type]
+                        response_serializer = ctx.resource.serializers[serializer]
                     except KeyError:
                         return http_response(ctx.NotAcceptable())
 
         else:
-            content_type = 'application/json'
-            response_serializer = ctx.resource.serializers[content_type]
-            response_representation = DEFAULT_REPRESENTATION_KEY
+            content_type = self._default_representation
+            serializer = _content_type_serializer(content_type)
+            response_serializer = ctx.resource.serializers[serializer]
+            response_representation = content_type
 
         response_content_type = content_type
 
@@ -234,11 +230,30 @@ class Resource(object):
             return http_response(ctx.MethodNotAllowed({'error': 'Method `%s` is not registered for resource `%s`' % (
                 method, self._path)}))
 
-    def representation(self, name=DEFAULT_REPRESENTATION_KEY):
-        def wrapped(func):
-            self._representations[name] = func
-            return func
-        return wrapped
+    def representation(self, content_type=None):
+        """
+        Create and register representation
+        """
+
+        if content_type:
+            try:
+                maintype,subtype=content_type.split('/')
+            except ValueError:
+                maintype,subtype=self._api.default_content_type.split('/')
+                try:
+                    vnd, subtype = subtype.split('+')
+                except ValueError:
+                    pass
+                content_type='%s/%s+%s' % (maintype, content_type, subtype)
+
+                warnings.warn(
+                    'Restosaur v1.0 will require proper valid content_type '\
+                    'declaration when registering `resource.representation()`. '\
+                    'Please modify your code by setting `%s` here.' % content_type,
+                        DeprecationWarning, stacklevel=2)
+
+        return self._api.representation_for(
+                self._scope, content_type=content_type)
 
     def uri(self, context, params=None, query=None):
         assert params is None or isinstance(params, dict), "entity.uri() params should be passed as dict"
@@ -259,12 +274,13 @@ class Resource(object):
         within a `context`
         """
 
-        if representation is None or representation==DEFAULT_REPRESENTATION_KEY:
-            try:
-                convert = self.representations[DEFAULT_REPRESENTATION_KEY]
-            except KeyError:
-                convert = lambda x, ctx: x  # pass through
+        representation = representation or self._default_representation
+
+        try:
+            representation_obj = self.representations[representation]
+        except KeyError:
+            convert = lambda x, ctx: x  # pass through
         else:
-            convert = self.representations[representation]
+            convert = representation_obj.read
         return convert(obj, context)
 

@@ -4,11 +4,16 @@ Restosaur - a tiny but real REST library
 Author: Marcin Nowak <marcin.j.nowak@gmail.com>
 """
 
+from collections import defaultdict
+import types
 
 import resource
 import responses
 import filters
 import decorators
+import serializers
+import representations
+
 
 
 def autodiscover(module_name='restapi'):
@@ -34,20 +39,41 @@ def autodiscover(module_name='restapi'):
 
 
 class API(object):
-    def __init__(self, path, resources=None, middlewares=None):
+    def __init__(self, path='', middlewares=None,
+            default_content_type='application/json',
+            default_representation='application/json',
+            serializers=serializers.default_serializers):
+
+        path = path or ''
+
         if not path.endswith('/'):
             path += '/'
-        self.path = path
-        self.resources = resources or []
-        self.middlewares = middlewares or []
 
-    def add_resources(self, *resources):
-        self.resources += resources
+        self.path = path
+        self.resources = []
+        self.middlewares = middlewares or []
+        self.default_representation = default_representation
+        self.default_content_type = default_content_type
+        self.serializers = serializers
+        self.representations = defaultdict(dict)
 
     def resource(self, *args, **kw):
-        obj = resource.Resource(*args, **kw)
-        self.add_resources(obj)
+        obj = resource.Resource(self, *args, **kw)
+        self.resources.append(obj)
         return obj
+
+    def representation_for(self, scope, content_type=None):
+        content_type = content_type or self.default_content_type
+
+        scope_representations = self.representations[scope]
+
+        try:
+            representation = scope_representations[content_type]
+        except KeyError:
+            representation = representations.Representation()
+            self.representations[scope][content_type]=representation
+
+        return representation
 
     def get_urls(self):
         from django.conf.urls import patterns, url, include

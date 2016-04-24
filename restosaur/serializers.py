@@ -82,6 +82,9 @@ class SerializersRegistry(object):
     def contains(self, mimetype):
         return self._key(mimetype) in self._serializers
 
+    def __contains__(self, mimetype):
+        return self.contains(mimetype)
+
 
 default_serializers = SerializersRegistry()
 default_serializers.register('application/json', JsonSerializer())
