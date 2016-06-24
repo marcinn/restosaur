@@ -4,11 +4,12 @@ Restosaur - a tiny but real REST library
 Author: Marcin Nowak <marcin.j.nowak@gmail.com>
 """
 
+from __future__ import absolute_import
 
-import resource
-import responses
-import filters
-import decorators
+from . import resource
+from . import responses  # NOQA
+from . import filters  # NOQA
+from . import decorators  # NOQA
 
 
 def autodiscover(module_name='restapi'):
@@ -53,16 +54,17 @@ class API(object):
         from django.conf.urls import patterns, url, include
         from django.views.decorators.csrf import csrf_exempt
         from .dispatch import resource_dispatcher_factory
-        import urltemplate
+        from . import urltemplate
 
         urls = []
 
         for resource in self.resources:
             path = urltemplate.to_django_urlpattern(resource._path)
             if path.startswith('/'):
-                path=path[1:]
-            urls.append(url('^%s$' % path,
-                csrf_exempt(resource_dispatcher_factory(self, resource))))
+                path = path[1:]
+            urls.append(url(
+                '^%s$' % path, csrf_exempt(
+                    resource_dispatcher_factory(self, resource))))
 
         return [url('^%s' % self.path, include(patterns('', *urls)))]
 
@@ -75,5 +77,3 @@ class API(object):
         Shortcut for `restosaur.autodiscover()`
         """
         autodiscover(*args, **kw)
-
-

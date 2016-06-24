@@ -98,3 +98,41 @@ class RootPageTestCase(APIRootTestCase):
         self.assertEqual(data['bar'], 'http://testserver/foo/bar/:id')
 
 
+class ApiRootRootResourceRegistrationTestCase(unittest.TestCase):
+    def setUp(self):
+        super(ApiRootRootResourceRegistrationTestCase, self).setUp()
+
+        from django.test import RequestFactory
+
+        self.api = API('foo')
+        self.root_resource = self.api.resource('/')
+        self.rqfactory = RequestFactory()
+
+    def call(self, resource, method, *args, **kw):
+        rq = getattr(self.rqfactory, method)(resource.path, *args, **kw)
+        return resource_dispatcher_factory(self.api, resource)(rq)
+
+    def test_successful_registration_as_a_GET_method(self):
+        ApiRoot(self.root_resource)
+        self.assertTrue('GET' in self.root_resource._callbacks)
+
+    def test_successful_registration_proper_apiroot_func(self):
+        apiroot = ApiRoot(self.root_resource)
+        rootfuncname = apiroot.as_view().__name__
+        self.assertEqual(
+                self.root_resource._callbacks['GET'].__name__, rootfuncname)
+
+    def test_exception_at_second_registration_apiroot_to_same_rootresource(self):
+        ApiRoot(self.root_resource)
+        with self.assertRaises(ValueError):
+            ApiRoot(self.root_resource)
+
+    def test_that_apiroot_entries_added_after_registration_are_accessible(self):
+        apiroot = ApiRoot(self.root_resource)
+        bar = self.api.resource('bar')
+        apiroot.register(bar)
+
+        resp = self.call(self.root_resource, 'get')
+        data = json.loads(resp.content)
+
+        self.assertTrue('bar' in data)
