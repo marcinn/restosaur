@@ -93,6 +93,6 @@ def register(mimetype, serializer):
 
 
 def get(mimetype):
-    return default_serializers.get(mimetype)
+    return default_serializers[mimetype]
 
 
