@@ -39,7 +39,7 @@ import restosaur
 # import handy shortcuts
 from django.shortcuts import get_object_or_404  # NOQA
 
-api = restosaur.API('api')
+api = restosaur.API('api')  # url prefix will be set to `/api/`
 ```
 
 ### Configure Django project
@@ -106,7 +106,7 @@ And browse your posts via http://localhost:8000/api/posts
 * You've just created simple API with two resources (blog post collection and blog post detail)
 * Your API talks using `application/json` content type (the default)
 * You've defined simple representation of blog post model
-* You've created minimal dependencies with Django by encapsulating it's helpers in one module `webapi.py`
+* You've created minimal dependencies to Django by encapsulating it's helpers in one module `webapi.py` (it is a good strategy to embed API-related tools within this base module)
 
 ## License
 
