@@ -105,8 +105,9 @@ And browse your posts via http://localhost:8000/api/posts
 
 * You've just created simple API with two resources (blog post collection and blog post detail)
 * Your API talks using `application/json` content type (the default)
-* You've defined simple representation of blog post model
+* You've defined simple representation of blog post model (`restosaur` can work with any object - it depends on your needs)
 * You've created minimal dependencies to Django by encapsulating it's helpers in one module `webapi.py` (it is a good strategy to embed API-related tools within this base module)
+* You've created no dependencies (!) to `restosaur` in your app module
 
 ## License
 
