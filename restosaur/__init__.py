@@ -12,6 +12,9 @@ from . import filters  # NOQA
 from . import decorators  # NOQA
 
 
+default_app_config = 'restosaur.apps.RestosaurAppConfig'
+
+
 def autodiscover(module_name='restapi'):
     from django.conf import settings
 
