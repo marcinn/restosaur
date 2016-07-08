@@ -74,12 +74,12 @@ post_detail = api.resource('posts/:pk')
 
 @post_list.get()
 def post_list_view(context):
-    return context.OK(Post.objects.all())  # 200 OK response
+    return context.Response(Post.objects.all())  # 200 OK response
 
 
 @post_detail.get()
 def post_detail_view(context, pk):
-    return context.OK(get_object_or_404(Post, pk=pk))
+    return context.Response(get_object_or_404(Post, pk=pk))
 
 
 # register representation factories
