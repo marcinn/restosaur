@@ -53,6 +53,14 @@ class MultiPartFormDataSerializer(object):
         raise NotImplementedError
 
 
+class HTMLSerializer(object):
+    def loads(self, ctx):
+        return ctx.raw
+
+    def dumps(self, data):
+        return data
+
+
 class AlreadyRegistered(Exception):
     pass
 
@@ -85,6 +93,7 @@ class SerializersRegistry(object):
 
 default_serializers = SerializersRegistry()
 default_serializers.register('application/json', JsonSerializer())
+default_serializers.register('text/html', HTMLSerializer())
 default_serializers.register('multipart/form-data', MultiPartFormDataSerializer())
 
 

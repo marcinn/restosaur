@@ -1,28 +1,24 @@
-from django.utils.http import http_date
-from .utils import model_to_dict
 import times
+import warnings
+
+from django.utils.http import http_date
+
+from .utils import Collection
 
 
 class Response(object):
-    def __init__(self, context, data=None, status=200, headers=None,
-            last_modified=None, extra=None, add_links=True, links_key='_links'):
+    def __init__(
+            self, context, data=None, status=200, headers=None,
+            last_modified=None):
         self.headers = {}
         self.headers.update(headers or {})
         self.representation = None
         self.content_type = None
         self.context = context
         self.status = status
-        self.extra = extra
-        self.links_key = links_key
-        self.add_links = add_links
         self.data = data
         if last_modified:
             self.set_last_modified(last_modified)
-
-    def get_converter(self, representation):
-        dummy_converter = lambda x, context: x
-        converter = self.context.resource.representations.get(representation)
-        return converter or dummy_converter
 
     def set_last_modified(self, dt):
         if dt:
@@ -30,103 +26,74 @@ class Response(object):
         else:
             self.headers.pop('Last-Modified', None)
 
-    def serialize(self, data, representation):
-        if data is None and not self.extra:
-            return ''
-        else:
-            if self.status >= 200 and self.status <300:
-                output = {}
-                output.update(self.extra or {})
-                output.update(self.context.resource.convert(self.context, data, representation))
-                self._add_links(output, data, representation)
-            else:
-                output = data
-            return output
 
-    def _serialize_links(self, data, representation):
-        links = {}
-        if self.add_links and self.context.resource._links:
-            for key in self.context.resource._links:
-                method, linked_resource = self.context.resource._links[key]
-                links[key]={
-                    'uri': linked_resource.uri(self.context, params=self.context.parameters),
-                    'method': method.upper(),
-                    }
-        return links
-
-    def _add_links(self, resp, data, representation):
-        if not self.links_key in resp:
-            resp[self.links_key] = {}
-        resp[self.links_key].update(
-                self._serialize_links(data, representation))
-        return resp
+class OKResponse(Response):
+    pass
 
 
 class CreatedResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(CreatedResponse, self).__init__(context, data=data, status=201,
-                headers=headers)
+        super(CreatedResponse, self).__init__(
+                context, data=data, status=201, headers=headers)
 
 
 class NoContentResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(NoContentResponse, self).__init__(context, data=data, status=204,
-                headers=headers)
+        super(NoContentResponse, self).__init__(
+                context, data=data, status=204, headers=headers)
 
 
 class SeeOtherResponse(Response):
     def __init__(self, context, uri, data=None, headers=None):
         headers = headers or {}
         headers['Location'] = uri
-        super(SeeOtherResponse, self).__init__(context, data=data,
-                status=303, headers=headers)
+        super(SeeOtherResponse, self).__init__(
+                context, data=data, status=303, headers=headers)
 
 
 class NotModifiedResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(NotModifiedResponse, self).__init__(context, data=data, status=304,
-                headers=headers)
+        super(NotModifiedResponse, self).__init__(
+                context, data=data, status=304, headers=headers)
 
 
 class UnauthorizedResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(UnauthorizedResponse, self).__init__(context, data=data,
-                status=401, headers=headers)
+        super(UnauthorizedResponse, self).__init__(
+                context, data=data, status=401, headers=headers)
 
 
 class ForbiddenResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(ForbiddenResponse, self).__init__(context, data=data, status=403,
-                headers=headers)
+        super(ForbiddenResponse, self).__init__(
+                context, data=data, status=403, headers=headers)
 
 
 class NotFoundResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(NotFoundResponse, self).__init__(context, data=data, status=404,
-                headers=headers)
+        super(NotFoundResponse, self).__init__(
+                context, data=data, status=404, headers=headers)
 
 
 class MethodNotAllowedResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(MethodNotAllowedResponse, self).__init__(context, data=data,
-                status=405, headers=headers)
+        super(MethodNotAllowedResponse, self).__init__(
+                context, data=data, status=405, headers=headers)
 
 
 class CollectionResponse(Response):
     def __init__(self, context, iterable, totalCount=None, key=None, **kwargs):
-        super(CollectionResponse, self).__init__(context, data=iterable,
-                **kwargs)
-        self.key = key or 'items'
-        self.totalCount = totalCount
+        warnings.warn(
+            '`CollectionResponse` will be removed in Restosaur v0.9. '
+            'You should use plain `Response` or `OKResponse` '
+            '(ctx.Response() / ctx.OK() respectively).',
+            DeprecationWarning, stacklevel=3)
 
-    def serialize(self, iterable, representation):
-        resp = {
-                self.key: map(lambda x: self.context.resource.convert(self.context, x, representation), iterable),
-                'totalCount': self.totalCount if self.totalCount is not None else len(iterable),
-                }
-        resp.update(self.extra or {})
-        self._add_links(resp, iterable, representation)
-        return resp
+        warnings.warn
+        coll_obj = Collection(
+                context, iterable, key=key, totalcount=totalCount)
+        super(CollectionResponse, self).__init__(
+                context, data=coll_obj, **kwargs)
 
 
 class EntityResponse(Response):
@@ -135,8 +102,8 @@ class EntityResponse(Response):
 
 class NotAcceptableResponse(Response):
     def __init__(self, context, headers=None):
-        super(NotAcceptableResponse, self).__init__(context, data=None,
-                status=406, headers=headers)
+        super(NotAcceptableResponse, self).__init__(
+                context, data=None, status=406, headers=headers)
 
 
 class ValidationErrorResponse(Response):
@@ -144,20 +111,20 @@ class ValidationErrorResponse(Response):
         resp = {
                 'errors': errors,
                 }
-        super(ValidationErrorResponse, self).__init__(context, data=resp,
-                status=422, headers=headers)
+        super(ValidationErrorResponse, self).__init__(
+                context, data=resp, status=422, headers=headers)
 
 
 class InternalErrorResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(InternalErrorResponse, self).__init__(context, data=data,
-                status=500, headers=headers)
+        super(InternalErrorResponse, self).__init__(
+                context, data=data, status=500, headers=headers)
 
 
 class NotImplementedResponse(Response):
     def __init__(self, context, data=None, headers=None):
-        super(NotImplementedResponse, self).__init__(context, data=data,
-                status=501, headers=headers)
+        super(NotImplementedResponse, self).__init__(
+                context, data=data, status=501, headers=headers)
 
 
 def exception_response_factory(context, ex, tb=None, extra=None):
@@ -171,13 +138,12 @@ def exception_response_factory(context, ex, tb=None, extra=None):
     data = {}
     data.update(extra or {})
     data.update({
-        'error': unicode(ex),
+        'error': unicode(ex),  # NOQA
         })
 
     if tb:
         def stack_trace(x):
-            return dict(zip(['file','line','fn','source'], x))
+            return dict(zip(['file', 'line', 'fn', 'source'], x))
         data['traceback'] = map(stack_trace, traceback.extract_tb(tb))
 
     return cls(context=context, data=data)
-

@@ -98,6 +98,9 @@ class Context(object):
 
     # response factories
 
+    def OK(self, *args, **kwargs):
+        return responses.OKResponse(self, *args, **kwargs)
+
     def Response(self, *args, **kwargs):
         return responses.Response(self, *args, **kwargs)
 

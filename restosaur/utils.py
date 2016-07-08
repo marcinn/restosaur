@@ -1,5 +1,4 @@
 
-
 def model_to_dict(obj, context):
     """
     Convert django model instance to dict
@@ -13,3 +12,13 @@ def model_to_dict(obj, context):
 
     return data
 
+
+class Collection(object):
+    def __init__(
+            self, context, iterable, key=None, totalcount=None,
+            totalcount_key=None):
+
+        self.totalcount = totalcount or len(iterable)
+        self.iterable = iterable
+        self.totalcount_key = totalcount_key or 'totalCount'
+        self.key = key or 'items'

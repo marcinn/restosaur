@@ -1,10 +1,8 @@
 import functools
 import logging
 import sys
-import types
 import urllib
-import warnings
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 import mimeparse
 import responses
@@ -14,8 +12,9 @@ from django.http import HttpResponse
 
 from .exceptions import Http404
 from .headers import normalize_header_name
-from .loading import load_resource
-from .representations import RepresentationAlreadyRegistered, Representation
+from .representations import (
+        RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
+        Representation, Validator)
 
 
 log = logging.getLogger(__name__)
@@ -62,45 +61,30 @@ def resource_name_from_path(path):
 
 class Resource(object):
     def __init__(
-            self, path, name=None, expose=False,
-            default_content_type='application/json'):
+            self, path, name=None, default_content_type='application/json'):
         self._path = path
-        self._callbacks = {}
-        self._expose = expose
-        self._links = {}
+        self._callbacks = defaultdict(dict)
+        self._registered_methods = set()
         self._name = name or resource_name_from_path(path)
         self._representations = OrderedDict()
+        self._validators = OrderedDict()
         self._default_content_type = default_content_type
 
         self.add_representation(content_type=self._default_content_type)
-
-        if expose:
-            warnings.warn(
-                    '`expose` argument will be removed in Restosaur 0.7\n'
-                    'Use `restosaur.contrib.apiroot` for exposing resources',
-                    DeprecationWarning, stacklevel=3)
-        if name:
-            warnings.warn(
-                    '`name` argument will be removed in Restosaur 0.7',
-                    DeprecationWarning, stacklevel=3)
+        self.add_validator(content_type=self._default_content_type)
 
         # register aliases for the decorators
         for verb in ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'):
             setattr(
                 self, verb.lower(), functools.partial(self._decorator, verb))
 
-    def _decorator(self, method, link_to=None, link_as=None):
+    def _decorator(self, method, content_type=None, vnd=None):
         def wrapper(view):
-            if method in self._callbacks:
-                raise ValueError('Already registered')
-            self._callbacks[method] = view
-            if link_to:
-                if isinstance(link_to, types.StringTypes):
-                    link_resource = load_resource(link_to)
-                else:
-                    link_resource = link_to
-                key = link_as or link_resource.__name__
-                link_resource._links[key] = (method, self)
+            mt = _join_ct_vnd(content_type or self._default_content_type, vnd)
+            if method in self._callbacks[mt]:
+                raise ValueError('%s already registered for %s' % (method, mt))
+            self._callbacks[mt][method] = view
+            self._registered_methods.add(method)
             return view
         return wrapper
 
@@ -134,6 +118,15 @@ class Resource(object):
             filter(lambda x: x[0].startswith('HTTP_'), headers)))
         ctx.headers.update(http_headers)
 
+        if 'CONTENT_TYPE' in request.META:
+            if self._validators:
+                ctx.request_content_type = mimeparse.best_match(
+                    self._validators.keys(), request.META['CONTENT_TYPE'])
+            else:
+                ctx.request_content_type = None
+        else:
+            ctx.request_content_type = self._default_content_type
+
         # match response representation, serializer and content type
 
         def setup_response_ct_and_repr(ctx, accept):
@@ -147,7 +140,7 @@ class Resource(object):
         setup_response_ct_and_repr(
             ctx, ctx.headers.get('accept') or self._default_content_type)
 
-        if method not in self._callbacks:
+        if method not in self._registered_methods:
             return http_response(ctx.MethodNotAllowed({
                 'error': 'Method `%s` is not registered for resource `%s`' % (
                     method, self._path)}))
@@ -158,12 +151,10 @@ class Resource(object):
             content_length = 0
 
         if content_length and 'CONTENT_TYPE' in request.META:
-            mimetype = mimeparse.best_match(
-                self._representations.keys(), request.META['CONTENT_TYPE'])
-            if mimetype:
-                ctx.representation = self._representations[mimetype]
+            if ctx.request_content_type:
+                ctx.validator = self._validators[ctx.request_content_type]
                 if request.body:
-                    ctx.body = ctx.representation.parse(ctx)
+                    ctx.body = ctx.validator.parse(ctx)
             elif not content_length:
                 self.body = None
             else:
@@ -184,14 +175,16 @@ class Resource(object):
         log.debug('Calling %s, %s, %s' % (method, args, kw))
         try:
             try:
-                resp = self._callbacks[method](ctx, *args, **kw)
+                resp = self._callbacks[ctx.request_content_type][method](
+                        ctx, *args, **kw)
             except DjangoHttp404:
                 raise Http404
             else:
                 if not resp:
                     raise TypeError(
                             'Method `%s` does not return '
-                            'a response object' % self._callbacks[method])
+                            'a response object' % self._callbacks[
+                                ctx.request_content_type][method])
                 if not ctx.response_representation and resp.data is not None:
                     setup_response_ct_and_repr(ctx, self._default_content_type)
                     return http_response(ctx.NotAcceptable())
@@ -204,6 +197,9 @@ class Resource(object):
                 tb = sys.exc_info()[2]
             else:
                 tb = None
+            ctx.response_content_type = self._default_content_type
+            ctx.response_representation = Representation(
+                    content_type=ctx.response_content_type)
             resp = responses.exception_response_factory(ctx, ex, tb)
             log.exception(
                     'Internal Server Error: %s', ctx.request.path,
@@ -220,6 +216,14 @@ class Resource(object):
             self.add_representation(
                     vnd=vnd, content_type=content_type, serializer=serializer,
                     _transform_func=func)
+            return func
+        return wrapped
+
+    def validator(self, vnd=None, content_type=None, serializer=None):
+        def wrapped(func):
+            self.add_validator(
+                    vnd=vnd, content_type=content_type, serializer=serializer,
+                    _validator_func=func)
             return func
         return wrapped
 
@@ -242,6 +246,25 @@ class Resource(object):
         self._representations[content_type] = obj
         return obj
 
+    def add_validator(
+            self, vnd=None, content_type=None, serializer=None,
+            _validator_func=None):
+
+        content_type = content_type or self._default_content_type
+        repr_key = _join_ct_vnd(content_type, vnd)
+
+        if (repr_key in self._validators and
+                not repr_key == self._default_content_type):
+            raise ValidatorAlreadyRegistered(
+                    '%s: %s' % (self._path, repr_key))
+
+        obj = Validator(
+                vnd=vnd, content_type=content_type, serializer=serializer,
+                _validator_func=_validator_func)
+
+        self._validators[content_type] = obj
+        return obj
+
     def uri(self, context, params=None, query=None):
         assert params is None or isinstance(
                 params, dict), "entity.uri() params should be passed as dict"
@@ -255,19 +278,3 @@ class Resource(object):
             uri += '?'+urllib.urlencode(query)
 
         return uri
-
-    def convert(self, context, obj, representation=None):
-        """
-        Converts model (`obj`) using specified or default `representation`
-        within a `context`
-        """
-
-        if representation is None or representation==DEFAULT_REPRESENTATION_KEY:
-            try:
-                convert = self.representations[DEFAULT_REPRESENTATION_KEY]
-            except KeyError:
-                convert = lambda x, ctx: x  # pass through
-        else:
-            convert = self.representations[representation]
-        return convert(obj, context)
-
