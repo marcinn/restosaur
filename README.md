@@ -89,9 +89,10 @@ def post_detail_view(context, pk):
 def simple_post_to_dict(post, context):
     return {
         'id': post.pk,
-        'href': context.url_for(post_detail, pk=post.pk),
         'title': post.title,
-        'content': post.content
+        'content': post.content,
+        # create link (URI) to this object
+        'href': context.url_for(post_detail, pk=post.pk),
         }
 ```
 
