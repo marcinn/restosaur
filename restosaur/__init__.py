@@ -38,9 +38,12 @@ def autodiscover(module_name='restapi'):
 
 
 class API(object):
-    def __init__(self, path, resources=None, middlewares=None):
-        if not path.endswith('/'):
+    def __init__(self, path=None, resources=None, middlewares=None):
+        path = path or ''
+        if path and not path.endswith('/'):
             path += '/'
+        if path and path.startswith('/'):
+            path = path[1:]
         self.path = path
         self.resources = resources or []
         self.middlewares = middlewares or []
