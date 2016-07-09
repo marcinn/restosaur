@@ -50,7 +50,8 @@ api = restosaur.API()
     from django.conf.urls import url
     from webapi import api
     
-    urlpatterns = api.urlpatterns()
+    urlpatterns = [...]
+    urlpatterns += api.urlpatterns()
     ```
 
 For Django <1.7 you must call `autodiscover` explicitely, for example in `urls.py`:
@@ -95,15 +96,21 @@ def post_detail_view(context, pk):
 
 # register representation factories
 
-@post_list.representation()
 @post_detail.representation()
-def simple_post_to_dict(post, context):
+def post_as_dict(post, context):
     return {
-        'id': post.pk,
-        'title': post.title,
-        'content': post.content,
-        # create link (URI) to this object
-        'href': context.url_for(post_detail, pk=post.pk),
+            'id': post.pk,
+            'title': post.title,
+            'content': post.content,
+            # create link (URI) to this object
+            'href': context.url_for(post_detail, pk=post.pk),
+            }
+
+
+@post_list.representation()
+def posts_list_as_dict(posts, context):
+    return {
+            'posts': [post_as_dict(post, context) for post in posts]
         }
 ```
 
