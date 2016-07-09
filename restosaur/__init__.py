@@ -57,7 +57,14 @@ class API(object):
         return obj
 
     def get_urls(self):
-        from django.conf.urls import patterns, url, include
+        try:
+            from django.conf.urls import patterns, url, include
+        except ImportError:
+            from django.conf.urls import url, include
+
+            def patterns(x, *urls):
+                return list(urls)
+
         from django.views.decorators.csrf import csrf_exempt
         from .dispatch import resource_dispatcher_factory
         from . import urltemplate
@@ -75,8 +82,12 @@ class API(object):
         return [url('^%s' % self.path, include(patterns('', *urls)))]
 
     def urlpatterns(self):
-        from django.conf.urls import patterns, include
-        return patterns('', (r'^', include(self.get_urls())))
+        try:
+            from django.conf.urls import patterns, include
+        except ImportError:
+            return self.get_urls()
+        else:
+            return patterns('', (r'^', include(self.get_urls())))
 
     def autodiscover(self, *args, **kw):
         """

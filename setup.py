@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='restosaur',
-      version='0.6.4',
+      version='0.6.5',
       description='Damn simple RESTful library',
       classifiers=[
         "Development Status :: 3 - Alpha",
@@ -10,6 +10,8 @@ setup(name='restosaur',
         "Framework :: Django :: 1.6",
         "Framework :: Django :: 1.7",
         "Framework :: Django :: 1.8",
+        "Framework :: Django :: 1.9",
+        "Framework :: Django :: 1.10",
         "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
