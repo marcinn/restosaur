@@ -39,7 +39,7 @@ import restosaur
 # import handy shortcuts
 from django.shortcuts import get_object_or_404  # NOQA
 
-api = restosaur.API('api')  # url prefix will be set to `/api/`
+api = restosaur.API()
 ```
 
 ### Configure Django project
@@ -50,9 +50,20 @@ api = restosaur.API('api')  # url prefix will be set to `/api/`
     from django.conf.urls import url
     from webapi import api
     
-    urlpatterns = [...]
-    urlpatterns += api.urlpatterns()
+    urlpatterns = api.urlpatterns()
     ```
+
+For Django <1.7 you must call `autodiscover` explicitely, for example in `urls.py`:
+
+```python
+from django.conf.urls import url
+from webapi import api
+ 
+import restosaur
+restosaur.autodiscover()
+
+# ... rest of urls.py file...
+```
 
 ### Create module in one of yours Django application
 
@@ -100,7 +111,7 @@ def simple_post_to_dict(post, context):
 
 ```python manage.py runserver``
 
-And browse your posts via http://localhost:8000/api/posts
+And browse your posts via http://localhost:8000/posts
 
 ### What's happened?
 
@@ -109,6 +120,56 @@ And browse your posts via http://localhost:8000/api/posts
 * You've defined simple representation of blog post model (`restosaur` can work with any object - it depends on your needs)
 * You've created minimal dependencies to Django by encapsulating it's helpers in one module `webapi.py` (it is a good strategy to embed API-related tools within this base module)
 * You've created no dependencies (!) to `restosaur` in your app module
+
+
+## Compatibility
+
+* Django 1.6
+* Django 1.7
+* Django 1.8
+* Django 1.9
+* Django 1.10 (beta 1)
+* Python 2.7
+
+## Roadmap
+
+* 0.7 (beta) - stabilize representations and services API, remove obsolete code; better test coverage
+* 0.8 (beta) - add wsgi interface and move django adapter to `restosaur.contrib`
+* 0.9 (beta) - [proposal/idea] support for predicates
+* 0.10 (beta) - Python 3.x support
+* 1.0 (final) - stable API, ~100% test coverage, adapters for common web frameworks, Py2/Py3, complete documentation
+
+## Changelog
+
+0.6.5:
+ * support for Django 1.10b1
+
+0.6.4: 
+ * fix registering API to root path ("/")
+ * make API`s path optional
+ * run autodisovery automatically via Django` AppConfig (Django 1.7+)
+ * add settings for enabling or disabling autodiscovery and autodiscovery module name
+ 
+0.6.3:
+ (INVALID RELEASE)
+ 
+0.6.2:
+ * (contrib.apiroot) add possibiliy to autoregister apiroot view to specified resource
+ 
+0.6.1:
+ * fix loading modules
+ 
+0.6.0:
+ * add `contrib.apiroot` module
+ * Resource `expose` and `name` arguments deprecation 
+
+0.5.6:
+ * fix double slashes problem
+ 
+0.5.5:
+ * add internal error messages
+
+0.5.0 and ealier are too old to mention them here.
 
 ## License
 
