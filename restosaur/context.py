@@ -60,6 +60,15 @@ class QueryDict(object):
     def __iter__(self):
         return iter(self._data)
 
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def getlist(self, key, default=None):
+        return self._data.get(key, default)
+
     def keys(self):
         return self._data.keys()
 
@@ -186,6 +195,9 @@ class Context(object):
 
     def Forbidden(self, *args, **kwargs):
         return responses.ForbiddenResponse(self, *args, **kwargs)
+
+    def BadRequest(self, *args, **kwargs):
+        return responses.BadRequestResponse(self, *args, **kwargs)
 
     def Unauthorized(self, *args, **kwargs):
         return responses.UnauthorizedResponse(self, *args, **kwargs)

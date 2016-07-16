@@ -94,6 +94,12 @@ class NotModifiedResponse(Response):
                 context, data=data, status=304, headers=headers)
 
 
+class BadRequestResponse(Response):
+    def __init__(self, context, data=None, headers=None):
+        super(BadRequestResponse, self).__init__(
+                context, data=data, status=400, headers=headers)
+
+
 class UnauthorizedResponse(Response):
     def __init__(self, context, data=None, headers=None):
         super(UnauthorizedResponse, self).__init__(
