@@ -1,21 +1,13 @@
-from .context import Context
-
-
-def querydict_to_dict(qd):
-    out = {}
-    for key in qd:
-        if len(qd.getlist(key))>1:
-            out[key]=qd.getlist(key)
-        else:
-            out[key]=qd.get(key)
-    return out
+from .context import Context, QueryDict
 
 
 def build_context(api, resource, request):
     try:
-        raw_body = request.body # Django may raise RawPostDataException sometimes;
-                                # i.e. when processing POST multipart/form-data;
-                                # In that cases we can't access raw body anymore, sorry
+        # Django may raise RawPostDataException sometimes;
+        # i.e. when processing POST multipart/form-data;
+        # In that cases we can't access raw body anymore, sorry
+
+        raw_body = request.body
     except:
         raw_body = None
 
@@ -24,11 +16,12 @@ def build_context(api, resource, request):
     if request.resolver_match:
         parameters.update(request.resolver_match.kwargs)
 
-    parameters.update(querydict_to_dict(request.GET))
+    parameters.update(QueryDict(request.GET.lists()))
 
-    ctx = Context(api, request=request, resource=resource,
-        method=request.method, parameters=parameters, data=request.POST,
-        files=request.FILES, raw=raw_body)
+    ctx = Context(
+            api, request=request, resource=resource,
+            method=request.method, parameters=parameters, data=request.POST,
+            files=request.FILES, raw=raw_body)
 
     return ctx
 
@@ -43,7 +36,7 @@ def resource_dispatcher_factory(api, resource):
             except AttributeError:
                 pass
             else:
-                if method(request, ctx) == False:
+                if method(request, ctx) is False:
                     break
 
         response = resource(ctx, *args, **kw)
@@ -54,10 +47,8 @@ def resource_dispatcher_factory(api, resource):
             except AttributeError:
                 pass
             else:
-                if method(request, response, ctx) == False:
+                if method(request, response, ctx) is False:
                     break
 
         return response
     return dispatch_request
-
-

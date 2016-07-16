@@ -3,6 +3,7 @@ import datetime
 
 from restosaur import API, responses
 from restosaur.context import Context
+from restosaur.dispatch import build_context
 from restosaur.resource import Resource
 
 
@@ -128,6 +129,18 @@ class TestContextBuilidURI(ContextTestCase):
     def test_generating_uri_for_prefixed_api_without_slash_and_path_wihout_preceding_slash_but_ending_with_slash(self):
         self.assertEqual(self.ctx3.build_absolute_uri('foo/'),
                 'http://testserver/webapi/foo/')
+
+    def test_successful_building_uri_with_multivalue_query_arg(self):
+        ctx = self.factory('get', '', lambda ctx: None)
+        uri = ctx.build_absolute_uri('/some', {'foo': ['bar','baz']})
+        self.assertEqual(uri, 'http://testserver/some?foo=bar&foo=baz')
+
+    def test_successful_getting_mutlivalue_GET_args(self):
+        res = self.api.resource('foo')
+        rq = self.rqfactory.get('/foo?bar=baz&bar=qux')
+        ctx = build_context(self.api, res, rq)
+        self.assertTrue('baz' in ctx.parameters['bar'])
+        self.assertTrue('qux' in ctx.parameters['bar'])
 
 
 class TestContextIfModifiedSince(ContextTestCase):
