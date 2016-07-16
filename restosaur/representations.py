@@ -28,4 +28,3 @@ class ModelRepresentation(Representation):
 
     def to_dict(self, obj):
         return model_to_dict(obj)
-

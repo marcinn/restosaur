@@ -3,8 +3,9 @@ import datetime
 import decimal
 
 
-__all__ = ['JsonSerializer', 'registry']
-
+__all__ = [
+        'JsonSerializer', 'MultiPartFormDataSerializer',
+        'default_serializers']
 
 
 class DefaultRestfulEncoder(json.JSONEncoder):
@@ -84,8 +85,10 @@ class SerializersRegistry(object):
 
 
 default_serializers = SerializersRegistry()
-default_serializers.register('application/json', JsonSerializer())
-default_serializers.register('multipart/form-data', MultiPartFormDataSerializer())
+default_serializers.register(
+        'application/json', JsonSerializer())
+default_serializers.register(
+        'multipart/form-data', MultiPartFormDataSerializer())
 
 
 def register(mimetype, serializer):
@@ -94,5 +97,3 @@ def register(mimetype, serializer):
 
 def get(mimetype):
     return default_serializers.get(mimetype)
-
-

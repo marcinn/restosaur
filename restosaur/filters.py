@@ -26,10 +26,8 @@ class QuerysetFilter(object):
         if form.is_valid():
             data = form.cleaned_data
             really_cleaned_data = {}
-            for key,value in data.items():
+            for key, value in data.items():
                 if value is not None and value is not '' and value is not u'':
-                    really_cleaned_data[key]=value
+                    really_cleaned_data[key] = value
             return self.queryset.filter(**really_cleaned_data)
         return self.queryset
-
-

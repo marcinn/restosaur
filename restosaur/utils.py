@@ -12,4 +12,3 @@ def model_to_dict(obj, context):
         data[field.column] = getattr(obj, field_name)
 
     return data
-

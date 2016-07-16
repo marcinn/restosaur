@@ -1,27 +1,23 @@
 import functools
 import logging
-import mimeparse
-import responses
-import urltemplate
-import urllib
-import warnings
 import sys
 import types
-
+import urllib
+import warnings
 from collections import OrderedDict
-from django.http import HttpResponse
+
+import mimeparse
 from django.conf import settings
+from django.http import HttpResponse
 
-from .serializers import default_serializers
-from .headers import (
-        normalize_header_name,
-        parse_accept_header,
-        build_content_type_header,
-        )
-from .context import Context
+import responses
+import urltemplate
+
 from .exceptions import Http404
+from .headers import (build_content_type_header, normalize_header_name,
+                      parse_accept_header)
 from .loading import load_resource
-
+from .serializers import default_serializers
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +39,8 @@ def http_response(response):
         content_type = context.response_content_type
         serializer = context.serializer
         representation = context.representation_name
-        content = serializer.dumps(response.serialize(response.data, representation))
+        content = serializer.dumps(
+                response.serialize(response.data, representation))
     else:
         content = ''
         content_type = 'application/json'
@@ -54,7 +51,7 @@ def http_response(response):
         httpresp['Content-Type'] = content_type
 
     for header, value in response.headers.items():
-        httpresp[header]=value
+        httpresp[header] = value
 
     return httpresp
 
@@ -74,16 +71,20 @@ class Resource(object):
         self._serializers = serializers or default_serializers
 
         if expose:
-            warnings.warn('`expose` argument will be removed in Restosaur 0.7'\
+            warnings.warn(
+                    '`expose` argument will be removed in Restosaur 0.7'
                     '\nUse `restosaur.contrib.apiroot` for exposing resources',
                     DeprecationWarning, stacklevel=3)
         if name:
-            warnings.warn('`name` argument will be removed in Restosaur 0.7',
+            warnings.warn(
+                    '`name` argument will be removed in Restosaur 0.7',
                     DeprecationWarning, stacklevel=3)
 
         # register aliases for the decorators
         for verb in ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'):
-            setattr(self, verb.lower(), functools.partial(self._decorator, verb))
+            setattr(
+                    self, verb.lower(),
+                    functools.partial(self._decorator, verb))
 
     def _decorator(self, method, link_to=None, link_as=None):
         def wrapper(view):
@@ -132,7 +133,8 @@ class Resource(object):
             content_length = 0
 
         if content_length and 'CONTENT_TYPE' in request.META:
-            mimetype = mimeparse.best_match(dict(self._serializers.items()),
+            mimetype = mimeparse.best_match(
+                    dict(self._serializers.items()),
                     request.META['CONTENT_TYPE'])
             if mimetype:
                 ctx.deserializer = self._serializers[mimetype]
@@ -148,7 +150,8 @@ class Resource(object):
         # prepare request headers
 
         headers = request.META.items()
-        http_headers = dict(map(lambda x: (normalize_header_name(x[0]),x[1]),
+        http_headers = dict(map(
+            lambda x: (normalize_header_name(x[0]), x[1]),
             filter(lambda x: x[0].startswith('HTTP_'), headers)))
         ctx.headers.update(http_headers)
 
@@ -165,19 +168,20 @@ class Resource(object):
                 content_type = None
             else:
                 for content_type, representation, q in accepting:
-                    if content_type == '*/*' or content_type == 'application/*':
+                    if content_type == '*/*' or content_type == 'application/*':  # NOQA
                         content_type = 'application/json'
                         response_representation = DEFAULT_REPRESENTATION_KEY
                     if ctx.resource.serializers.contains(content_type)\
-                            and (not representation or representation in ctx.resource.representations):
-                        response_representation = representation or DEFAULT_REPRESENTATION_KEY
-                        response_serializer = ctx.resource.serializers[content_type]
-                        content_type = build_content_type_header(content_type, representation)
+                            and (not representation or representation in ctx.resource.representations):  # NOQA
+                        response_representation = representation or DEFAULT_REPRESENTATION_KEY  # NOQA
+                        response_serializer = ctx.resource.serializers[content_type]  # NOQA
+                        content_type = build_content_type_header(
+                                content_type, representation)
                         break
 
                 if content_type and not response_serializer:
                     try:
-                        response_serializer = ctx.resource.serializers[content_type]
+                        response_serializer = ctx.resource.serializers[content_type]  # NOQA
                     except KeyError:
                         return http_response(ctx.NotAcceptable())
 
@@ -188,14 +192,15 @@ class Resource(object):
 
         response_content_type = content_type
 
-        if content_length and (not response_content_type or not response_serializer):
-            return HttpResponse('Not acceptable `%s`' % ctx.headers.get('accept'),
-                    status=406) # Not Acceptable
+        if content_length and (
+                not response_content_type or not response_serializer):
+            return HttpResponse(
+                    'Not acceptable `%s`' % ctx.headers.get('accept'),
+                    status=406)
 
         ctx.representation_name = response_representation
         ctx.response_content_type = response_content_type
         ctx.serializer = response_serializer
-
 
         # support for X-HTTP-METHOD-OVERRIDE
         method = http_headers.get('x-http-method-override') or method
@@ -209,30 +214,34 @@ class Resource(object):
                     raise Http404
                 else:
                     if not resp:
-                        raise TypeError('Method `%s` does not return a response object' % self._callbacks[method])
+                        raise TypeError(
+                                'Method `%s` does not return '
+                                'a response object' % self._callbacks[method])
                     if not response_representation and resp.data is not None:
                         return http_response(ctx.NotAcceptable())
 
                     return http_response(resp)
             except Http404:
                 return http_response(ctx.NotFound())
-            except Exception, ex:
+            except Exception as ex:
                 if settings.DEBUG:
                     tb = sys.exc_info()[2]
                 else:
                     tb = None
                 resp = responses.exception_response_factory(ctx, ex, tb)
-                log.exception('Internal Server Error: %s', ctx.request.path,
-                    exc_info=sys.exc_info(),
-                    extra={
-                        'status_code': resp.status,
-                        'context': ctx,
-                    }
+                log.exception(
+                        'Internal Server Error: %s', ctx.request.path,
+                        exc_info=sys.exc_info(),
+                        extra={
+                            'status_code': resp.status,
+                            'context': ctx,
+                        }
                 )
                 return http_response(resp)
         else:
-            return http_response(ctx.MethodNotAllowed({'error': 'Method `%s` is not registered for resource `%s`' % (
-                method, self._path)}))
+            return http_response(ctx.MethodNotAllowed({
+                'error': 'Method `%s` is not registered for resource `%s`' % (
+                    method, self._path)}))
 
     def representation(self, name=DEFAULT_REPRESENTATION_KEY):
         def wrapped(func):
@@ -241,7 +250,8 @@ class Resource(object):
         return wrapped
 
     def uri(self, context, params=None, query=None):
-        assert params is None or isinstance(params, dict), "entity.uri() params should be passed as dict"
+        assert params is None or isinstance(
+                params, dict), "entity.uri() params should be passed as dict"
 
         params = params or {}
 
@@ -259,12 +269,12 @@ class Resource(object):
         within a `context`
         """
 
-        if representation is None or representation==DEFAULT_REPRESENTATION_KEY:
+        if (representation is None or
+                representation == DEFAULT_REPRESENTATION_KEY):
             try:
                 convert = self.representations[DEFAULT_REPRESENTATION_KEY]
             except KeyError:
-                convert = lambda x, ctx: x  # pass through
+                convert = responses.dummy_converter
         else:
             convert = self.representations[representation]
         return convert(obj, context)
-
