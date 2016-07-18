@@ -148,6 +148,9 @@ And browse your posts via http://localhost:8000/posts
 
 ## Changelog
 
+0.6.7:
+ * make QueryDict more dict-like object
+
 0.6.6:
  * support for multivalued GET parameters
 
