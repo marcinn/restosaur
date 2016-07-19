@@ -6,3 +6,4 @@
 /build
 /.eggs
 /.coverage
+/docs/build
