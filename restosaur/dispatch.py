@@ -27,21 +27,33 @@ def build_context(api, resource, request):
 
 
 def resource_dispatcher_factory(api, resource):
+    from django.http import HttpResponse
+
     def dispatch_request(request, *args, **kw):
         ctx = build_context(api, resource, request)
+        bypass_resource_call = False
+        middlewares_called = []
 
         for middleware in api.middlewares:
+            middlewares_called.append(middleware)
+
             try:
                 method = middleware.process_request
             except AttributeError:
                 pass
             else:
                 if method(request, ctx) is False:
+                    bypass_resource_call = True
                     break
 
-        response = resource(ctx, *args, **kw)
+        if not bypass_resource_call:
+            response = resource(ctx, *args, **kw)
+        else:
+            response = HttpResponse()
 
-        for middleware in api.middlewares:
+        middlewares_called.reverse()
+
+        for middleware in middlewares_called:
             try:
                 method = middleware.process_response
             except AttributeError:
