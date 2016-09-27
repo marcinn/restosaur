@@ -29,5 +29,3 @@ def remove_parameters(urltemplate):
 
 def to_django_urlpattern(path):
     return RE_PARAMS.sub('/(?P<\\2>[^/]+)', path)
-
-

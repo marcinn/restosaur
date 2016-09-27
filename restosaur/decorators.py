@@ -2,7 +2,6 @@ import functools
 from .responses import UnauthorizedResponse, ForbiddenResponse
 
 
-
 def login_required(func):
     @functools.wraps(func)
     def wrapped(request, *args, **kw):

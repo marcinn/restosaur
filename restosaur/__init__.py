@@ -12,6 +12,9 @@ from . import filters  # NOQA
 from . import decorators  # NOQA
 
 
+default_app_config = 'restosaur.apps.RestosaurAppConfig'
+
+
 def autodiscover(module_name='restapi'):
     from django.conf import settings
 
@@ -35,9 +38,12 @@ def autodiscover(module_name='restapi'):
 
 
 class API(object):
-    def __init__(self, path, resources=None, middlewares=None):
-        if not path.endswith('/'):
+    def __init__(self, path=None, resources=None, middlewares=None):
+        path = path or ''
+        if path and not path.endswith('/'):
             path += '/'
+        if path and path.startswith('/'):
+            path = path[1:]
         self.path = path
         self.resources = resources or []
         self.middlewares = middlewares or []
@@ -51,7 +57,14 @@ class API(object):
         return obj
 
     def get_urls(self):
-        from django.conf.urls import patterns, url, include
+        try:
+            from django.conf.urls import patterns, url, include
+        except ImportError:
+            from django.conf.urls import url, include
+
+            def patterns(x, *urls):
+                return list(urls)
+
         from django.views.decorators.csrf import csrf_exempt
         from .dispatch import resource_dispatcher_factory
         from . import urltemplate
@@ -69,8 +82,12 @@ class API(object):
         return [url('^%s' % self.path, include(patterns('', *urls)))]
 
     def urlpatterns(self):
-        from django.conf.urls import patterns, include
-        return patterns('', (r'^', include(self.get_urls())))
+        try:
+            from django.conf.urls import patterns, include
+        except ImportError:
+            return self.get_urls()
+        else:
+            return patterns('', (r'^', include(self.get_urls())))
 
     def autodiscover(self, *args, **kw):
         """

@@ -1,12 +1,13 @@
 import functools
 import logging
 import sys
-import urllib
-from collections import OrderedDict, defaultdict
-
 import mimeparse
 import responses
 import urltemplate
+import urllib
+
+from collections import OrderedDict, defaultdict
+
 from django.conf import settings
 from django.http import HttpResponse
 

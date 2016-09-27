@@ -126,6 +126,21 @@ class NotFoundTestCase(ResourceTestCase):
         self.assertEqual(resp['Content-Type'], 'application/json')
 
 
+class BadRequestTestCase(ResourceTestCase):
+    def setUp(self):
+        super(BadRequestTestCase, self).setUp()
+
+        self.resource = self.api.resource('badrequest')
+
+        @self.resource.get()
+        def badrequest_GET(ctx):
+            return ctx.BadRequest()
+
+    def test_returning_400_code_when_returning_BadRequestResponse(self):
+        resp = self.call(self.resource, 'get')
+        self.assertEqual(resp.status_code, 400)
+
+
 class MethodNotAllowedTestCase(ResourceTestCase):
     def setUp(self):
         super(MethodNotAllowedTestCase, self).setUp()

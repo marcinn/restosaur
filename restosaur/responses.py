@@ -6,6 +6,10 @@ from django.utils.http import http_date
 from .utils import Collection
 
 
+def dummy_converter(x, context):
+    return x
+
+
 class Response(object):
     def __init__(
             self, context, data=None, status=200, headers=None,
@@ -57,6 +61,12 @@ class NotModifiedResponse(Response):
                 context, data=data, status=304, headers=headers)
 
 
+class BadRequestResponse(Response):
+    def __init__(self, context, data=None, headers=None):
+        super(BadRequestResponse, self).__init__(
+                context, data=data, status=400, headers=headers)
+
+
 class UnauthorizedResponse(Response):
     def __init__(self, context, data=None, headers=None):
         super(UnauthorizedResponse, self).__init__(
@@ -89,7 +99,6 @@ class CollectionResponse(Response):
             '(ctx.Response() / ctx.OK() respectively).',
             DeprecationWarning, stacklevel=3)
 
-        warnings.warn
         coll_obj = Collection(
                 context, iterable, key=key, totalcount=totalCount)
         super(CollectionResponse, self).__init__(

@@ -1,21 +1,13 @@
-from .context import Context
-
-
-def querydict_to_dict(qd):
-    out = {}
-    for key in qd:
-        if len(qd.getlist(key))>1:
-            out[key]=qd.getlist(key)
-        else:
-            out[key]=qd.get(key)
-    return out
+from .context import Context, QueryDict
 
 
 def build_context(api, resource, request):
     try:
-        raw_body = request.body # Django may raise RawPostDataException sometimes;
-                                # i.e. when processing POST multipart/form-data;
-                                # In that cases we can't access raw body anymore, sorry
+        # Django may raise RawPostDataException sometimes;
+        # i.e. when processing POST multipart/form-data;
+        # In that cases we can't access raw body anymore, sorry
+
+        raw_body = request.body
     except:
         raw_body = None
 
@@ -24,40 +16,51 @@ def build_context(api, resource, request):
     if request.resolver_match:
         parameters.update(request.resolver_match.kwargs)
 
-    parameters.update(querydict_to_dict(request.GET))
+    parameters.update(QueryDict(request.GET.lists()))
 
-    ctx = Context(api, request=request, resource=resource,
-        method=request.method, parameters=parameters, data=request.POST,
-        files=request.FILES, raw=raw_body)
+    ctx = Context(
+            api, request=request, resource=resource,
+            method=request.method, parameters=parameters, data=request.POST,
+            files=request.FILES, raw=raw_body)
 
     return ctx
 
 
 def resource_dispatcher_factory(api, resource):
+    from django.http import HttpResponse
+
     def dispatch_request(request, *args, **kw):
         ctx = build_context(api, resource, request)
+        bypass_resource_call = False
+        middlewares_called = []
 
         for middleware in api.middlewares:
+            middlewares_called.append(middleware)
+
             try:
                 method = middleware.process_request
             except AttributeError:
                 pass
             else:
-                if method(request, ctx) == False:
+                if method(request, ctx) is False:
+                    bypass_resource_call = True
                     break
 
-        response = resource(ctx, *args, **kw)
+        if not bypass_resource_call:
+            response = resource(ctx, *args, **kw)
+        else:
+            response = HttpResponse()
 
-        for middleware in api.middlewares:
+        middlewares_called.reverse()
+
+        for middleware in middlewares_called:
             try:
                 method = middleware.process_response
             except AttributeError:
                 pass
             else:
-                if method(request, response, ctx) == False:
+                if method(request, response, ctx) is False:
                     break
 
         return response
     return dispatch_request
-
-

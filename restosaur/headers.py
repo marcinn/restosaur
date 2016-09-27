@@ -5,7 +5,6 @@ def parse_accept_header(accept):
     for media_range in accept.split(","):
         parts = media_range.split(";")
         media_type = parts.pop(0).strip()
-        media_params = []
         # convert vendor-specific content types into something useful (see
         # docstring)
         typ, subtyp = media_type.split('/')
@@ -40,5 +39,4 @@ def normalize_header_name(header):
     header = header.lower()
     if header.startswith('http_'):
         header = header.replace('http_', '', 1)
-    return header.replace('_','-')
-
+    return header.replace('_', '-')
