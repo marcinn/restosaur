@@ -26,51 +26,12 @@ def _join_ct_vnd(content_type, vnd):
     return join_content_type_with_vnd(content_type, vnd)
 
 
-def match_representation(types, instance):
-    model = type(instance)
-
-    try:
-        return types[model]
-    except KeyError:
-        try:
-            return types[None]
-        except KeyError:
-            raise KeyError(
-                '%s has no registered representation handler' % instance)
-
-
-def http_response(response):
-    """
-    RESTResponse -> HTTPResponse factory
-    """
-
-    if isinstance(response, HttpResponse):
-        return response
-
-    context = response.context
-    content_type = context.response_content_type
-    content = ''
-
-    if response.data is not None:
-        representation = match_representation(
-                context.response_representations, response.data)
-        content = representation.render(context, response.data)
-        # content_type = _join_ct_vnd(
-        #        representation.content_type, representation.vnd)
-
-    httpresp = HttpResponse(content, status=response.status)
-
-    if content_type:
-        httpresp['Content-Type'] = content_type
-
-    for header, value in response.headers.items():
-        httpresp[header] = value
-
-    return httpresp
-
-
 def resource_name_from_path(path):
     return urltemplate.remove_parameters(path).strip('/')
+
+
+class NoMoreMediaTypes(Exception):
+    pass
 
 
 class Resource(object):
@@ -102,13 +63,91 @@ class Resource(object):
             return view
         return wrapper
 
+    def _match_media_type(self, accept, exclude=None):
+        exclude = exclude or []
+
+        def _drop_mt_args(x):
+            return x.split(';')[0]
+
+        mediatypes = filter(
+                lambda x: _drop_mt_args(x) not in exclude, map(
+                    lambda x: x.media_type(), self.representations))
+
+        if not mediatypes:
+            raise NoMoreMediaTypes
+
+        mediatype = mimeparse.best_match(mediatypes, accept)
+
+        if not mediatype:
+            raise NoMoreMediaTypes
+
+        return _drop_mt_args(mediatype)
+
+    def _match_representation(self, instance, ctx):
+        accept = ctx.headers.get('accept') or '*/*'
+        exclude = []
+        model = type(instance)
+        types = {}
+
+        while True:
+            try:
+                mediatype = self._match_media_type(accept, exclude=exclude)
+            except NoMoreMediaTypes:
+                break
+
+            try:
+                types = self._representations[mediatype]
+            except KeyError:
+                exclude.append(mediatype)
+            else:
+                try:
+                    return types[model]
+                except KeyError:
+                    exclude.append(mediatype)
+
+        for mediatype in exclude:
+            types = self._representations[mediatype]
+
+            try:
+                return types[None]
+            except KeyError:
+                pass
+
+        raise KeyError(
+            '%s has no registered representation handler for `%s`' % (
+                model, accept))
+
+    def _http_response(self, response):
+        """
+        RESTResponse -> HTTPResponse factory
+        """
+
+        if isinstance(response, HttpResponse):
+            return response
+
+        context = response.context
+        content_type = context.response_content_type
+        content = ''
+
+        if response.data is not None:
+            representation = self._match_representation(response.data, context)
+            content = representation.render(context, response.data)
+            content_type = _join_ct_vnd(
+                   representation.content_type, representation.vnd)
+
+        httpresp = HttpResponse(content, status=response.status)
+
+        if content_type:
+            httpresp['Content-Type'] = content_type
+
+        for header, value in response.headers.items():
+            httpresp[header] = value
+
+        return httpresp
+
     @property
     def name(self):
         return self._name
-
-    @property
-    def expose(self):
-        return self._expose
 
     @property
     def path(self):
@@ -116,7 +155,21 @@ class Resource(object):
 
     @property
     def representations(self):
-        return self._representations
+        result = []
+        for models in self._representations.values():
+            result += models.values()
+        return result
+
+    def _setup_response_ct_and_repr(self, ctx, accept):
+        try:
+            response_content_type = self._match_media_type(accept)
+        except NoMoreMediaTypes:
+            ctx.response_content_type = None
+            ctx.response_representations = {}
+        else:
+            ctx.response_content_type = response_content_type
+            ctx.response_representations = self._representations[
+                    response_content_type]
 
     def __call__(self, ctx, *args, **kw):
         from django.http import Http404 as DjangoHttp404
@@ -144,19 +197,11 @@ class Resource(object):
 
         # match response representation, serializer and content type
 
-        def setup_response_ct_and_repr(ctx, accept):
-            response_content_type = mimeparse.best_match(
-                        self._representations.keys(), accept)
-            response_representations = self._representations.get(
-                    response_content_type)
-            ctx.response_content_type = response_content_type
-            ctx.response_representations = response_representations
-
-        setup_response_ct_and_repr(
+        self._setup_response_ct_and_repr(
             ctx, ctx.headers.get('accept') or self._default_content_type)
 
         if method not in self._registered_methods:
-            return http_response(ctx.MethodNotAllowed({
+            return self._http_response(ctx.MethodNotAllowed({
                 'error': 'Method `%s` is not registered for resource `%s`' % (
                     method, self._path)}))
 
@@ -173,13 +218,14 @@ class Resource(object):
             elif not content_length:
                 self.body = None
             else:
-                setup_response_ct_and_repr(ctx, self._default_content_type)
-                return http_response(ctx.NotAcceptable())
+                self._setup_response_ct_and_repr(
+                        ctx, self._default_content_type)
+                return self._http_response(ctx.UnsupportedMediaType())
 
         ctx.content_type = request.META.get('CONTENT_TYPE')
 
         if content_length and not ctx.response_representations:
-            setup_response_ct_and_repr(ctx, self._default_content_type)
+            self._setup_response_ct_and_repr(ctx, self._default_content_type)
             return HttpResponse(
                     'Not acceptable `%s`' % ctx.headers.get('accept'),
                     status=406)
@@ -201,12 +247,13 @@ class Resource(object):
                             'a response object' % self._callbacks[
                                 ctx.request_content_type][method])
                 if not ctx.response_representations and resp.data is not None:
-                    setup_response_ct_and_repr(ctx, self._default_content_type)
-                    return http_response(ctx.NotAcceptable())
+                    self._setup_response_ct_and_repr(
+                            ctx, self._default_content_type)
+                    return self._http_response(ctx.NotAcceptable())
 
-                return http_response(resp)
+                return self._http_response(resp)
         except Http404:
-            return http_response(ctx.NotFound())
+            return self._http_response(ctx.NotFound())
         except Exception as ex:
             if settings.DEBUG:
                 tb = sys.exc_info()[2]
@@ -224,7 +271,7 @@ class Resource(object):
                         'context': ctx,
                     }
             )
-            return http_response(resp)
+            return self._http_response(resp)
 
     def representation(self, model=None, media=None, serializer=None):
         def wrapped(func):
@@ -233,9 +280,9 @@ class Resource(object):
             else:
                 content_types = [split_mediatype(media)]
 
-            for ct, v in content_types:
+            for ct, v, args in content_types:
                 self.add_representation(
-                    model=model, vnd=v, content_type=ct,
+                    model=model, vnd=v, content_type=ct, qvalue=args.get('q'),
                     serializer=serializer, _transform_func=func)
             return func
         return wrapped
@@ -249,8 +296,8 @@ class Resource(object):
         return wrapped
 
     def add_representation(
-            self, model=None, vnd=None, content_type=None, serializer=None,
-            _transform_func=None):
+            self, model=None, vnd=None, content_type=None, qvalue=None,
+            serializer=None, _transform_func=None):
 
         content_type = content_type or self._default_content_type
         repr_key = _join_ct_vnd(content_type, vnd)
@@ -263,7 +310,7 @@ class Resource(object):
 
         obj = Representation(
                 vnd=vnd, content_type=content_type, serializer=serializer,
-                _transform_func=_transform_func)
+                _transform_func=_transform_func, qvalue=qvalue)
 
         self._representations.setdefault(repr_key, {})
         self._representations[repr_key][model] = obj

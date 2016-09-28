@@ -1,4 +1,4 @@
-from .utils import Collection
+from .utils import Collection, join_content_type_with_vnd
 from . import serializers
 
 
@@ -24,9 +24,10 @@ def _pass_through_validation(x, ctx):
 
 class Representation(object):
     def __init__(
-            self, vnd=None, content_type='application/json', serializer=None,
-            _transform_func=None):
+            self, vnd=None, content_type='application/json', qvalue=None,
+            serializer=None, _transform_func=None):
 
+        self.qvalue = qvalue if qvalue is not None else 1
         self.serializer = serializer or serializers.get(content_type)
         self.content_type = content_type
         self.vnd = vnd
@@ -46,6 +47,10 @@ class Representation(object):
         else:
             data = self._transform_func(obj, context)
         return self.serializer.dumps(data)
+
+    def media_type(self):
+        mt = join_content_type_with_vnd(self.content_type, self.vnd)
+        return '%s; q=%s' % (mt, self.qvalue)
 
 
 class Validator(object):

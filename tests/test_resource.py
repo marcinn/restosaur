@@ -199,11 +199,11 @@ class MethodsHandlingTestCase(ResourceTestCase):
                 content_type=self.post._default_content_type)
         self.assertEqual(resp.status_code, 200)
 
-    def test_not_accepting_unhandled_content_type_POST(self):
+    def test_unsupported_media_type_POST(self):
         resp = self.call(
                 self.post, 'post',
                 content_type='text/html')
-        self.assertEqual(resp.status_code, 406)
+        self.assertEqual(resp.status_code, 415)
 
     def test_succesful_handling_registered_PUT(self):
         resp = self.call(self.put, 'put')

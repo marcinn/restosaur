@@ -58,10 +58,11 @@ def autodiscover(module_name='restapi'):
 
 def split_mediatype(mt):
     """
-    Split media type into (content_type, vnd) tuple
+    Split media type into (content_type, vnd, params) tuple
 
-    Function converts `type/[tree.]subtype[+suffix]`
+    Function converts `type/[tree.]subtype[+suffix][;params]`
     into generic mediatype together with subtype without suffix.
+    Extra parameteres are returned as third element of the tuple.
     """
 
     type_, subtype, args = mimeparse.parse_mime_type(mt)
@@ -73,7 +74,7 @@ def split_mediatype(mt):
 
     ct = '%s/%s' % (type_, suffix or subtype)
     vnd = subtype.split('+')[0] if suffix else None
-    return ct, vnd
+    return ct, vnd, args
 
 
 def generic_mediatype(mt):

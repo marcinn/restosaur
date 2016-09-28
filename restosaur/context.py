@@ -211,6 +211,9 @@ class Context(object):
     def NotAcceptable(self, *args, **kwargs):
         return responses.NotAcceptableResponse(self, *args, **kwargs)
 
+    def UnsupportedMediaType(self, *args, **kwargs):
+        return responses.UnsupportedMediaTypeResponse(self, *args, **kwargs)
+
     def NotFound(self, *args, **kwargs):
         return responses.NotFoundResponse(self, *args, **kwargs)
 

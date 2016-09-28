@@ -115,6 +115,12 @@ class NotAcceptableResponse(Response):
                 context, data=None, status=406, headers=headers)
 
 
+class UnsupportedMediaTypeResponse(Response):
+    def __init__(self, context, headers=None):
+        super(UnsupportedMediaTypeResponse, self).__init__(
+                context, data=None, status=415, headers=headers)
+
+
 class ValidationErrorResponse(Response):
     def __init__(self, context, errors, headers=None):
         resp = {
