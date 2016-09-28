@@ -16,17 +16,27 @@ from .headers import normalize_header_name
 from .representations import (
         RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
         Representation, Validator)
+from .utils import join_content_type_with_vnd, split_mediatype
 
 
 log = logging.getLogger(__name__)
 
 
 def _join_ct_vnd(content_type, vnd):
-    if not vnd:
-        return content_type
+    return join_content_type_with_vnd(content_type, vnd)
 
-    x, y = content_type.split('/')
-    return '%s/%s+%s' % (x, vnd, y)
+
+def match_representation(types, instance):
+    model = type(instance)
+
+    try:
+        return types[model]
+    except KeyError:
+        try:
+            return types[None]
+        except KeyError:
+            raise KeyError(
+                '%s has no registered representation handler' % instance)
 
 
 def http_response(response):
@@ -42,8 +52,11 @@ def http_response(response):
     content = ''
 
     if response.data is not None:
-        representation = context.response_representation
+        representation = match_representation(
+                context.response_representations, response.data)
         content = representation.render(context, response.data)
+        # content_type = _join_ct_vnd(
+        #        representation.content_type, representation.vnd)
 
     httpresp = HttpResponse(content, status=response.status)
 
@@ -119,7 +132,8 @@ class Resource(object):
             filter(lambda x: x[0].startswith('HTTP_'), headers)))
         ctx.headers.update(http_headers)
 
-        if 'CONTENT_TYPE' in request.META:
+        if ('CONTENT_TYPE' in request.META
+                and request.META.get('CONTENT_LENGTH')):
             if self._validators:
                 ctx.request_content_type = mimeparse.best_match(
                     self._validators.keys(), request.META['CONTENT_TYPE'])
@@ -133,10 +147,10 @@ class Resource(object):
         def setup_response_ct_and_repr(ctx, accept):
             response_content_type = mimeparse.best_match(
                         self._representations.keys(), accept)
-            response_representation = self._representations.get(
+            response_representations = self._representations.get(
                     response_content_type)
             ctx.response_content_type = response_content_type
-            ctx.response_representation = response_representation
+            ctx.response_representations = response_representations
 
         setup_response_ct_and_repr(
             ctx, ctx.headers.get('accept') or self._default_content_type)
@@ -164,7 +178,7 @@ class Resource(object):
 
         ctx.content_type = request.META.get('CONTENT_TYPE')
 
-        if content_length and not ctx.response_representation:
+        if content_length and not ctx.response_representations:
             setup_response_ct_and_repr(ctx, self._default_content_type)
             return HttpResponse(
                     'Not acceptable `%s`' % ctx.headers.get('accept'),
@@ -186,7 +200,7 @@ class Resource(object):
                             'Method `%s` does not return '
                             'a response object' % self._callbacks[
                                 ctx.request_content_type][method])
-                if not ctx.response_representation and resp.data is not None:
+                if not ctx.response_representations and resp.data is not None:
                     setup_response_ct_and_repr(ctx, self._default_content_type)
                     return http_response(ctx.NotAcceptable())
 
@@ -199,8 +213,8 @@ class Resource(object):
             else:
                 tb = None
             ctx.response_content_type = self._default_content_type
-            ctx.response_representation = Representation(
-                    content_type=ctx.response_content_type)
+            ctx.response_representations = {None: Representation(
+                        content_type=ctx.response_content_type)}
             resp = responses.exception_response_factory(ctx, ex, tb)
             log.exception(
                     'Internal Server Error: %s', ctx.request.path,
@@ -212,11 +226,17 @@ class Resource(object):
             )
             return http_response(resp)
 
-    def representation(self, vnd=None, content_type=None, serializer=None):
+    def representation(self, model=None, media=None, serializer=None):
         def wrapped(func):
-            self.add_representation(
-                    vnd=vnd, content_type=content_type, serializer=serializer,
-                    _transform_func=func)
+            if isinstance(media, (list, tuple)):
+                content_types = map(split_mediatype, media)
+            else:
+                content_types = [split_mediatype(media)]
+
+            for ct, v in content_types:
+                self.add_representation(
+                    model=model, vnd=v, content_type=ct,
+                    serializer=serializer, _transform_func=func)
             return func
         return wrapped
 
@@ -229,22 +249,24 @@ class Resource(object):
         return wrapped
 
     def add_representation(
-            self, vnd=None, content_type=None, serializer=None,
+            self, model=None, vnd=None, content_type=None, serializer=None,
             _transform_func=None):
 
         content_type = content_type or self._default_content_type
         repr_key = _join_ct_vnd(content_type, vnd)
 
         if (repr_key in self._representations and
-                not repr_key == self._default_content_type):
+                not repr_key == self._default_content_type
+                and model in self._representations[repr_key]):
             raise RepresentationAlreadyRegistered(
-                    '%s: %s' % (self._path, repr_key))
+                    '%s: %s (%s)' % (self._path, repr_key, model))
 
         obj = Representation(
                 vnd=vnd, content_type=content_type, serializer=serializer,
                 _transform_func=_transform_func)
 
-        self._representations[content_type] = obj
+        self._representations.setdefault(repr_key, {})
+        self._representations[repr_key][model] = obj
         return obj
 
     def add_validator(

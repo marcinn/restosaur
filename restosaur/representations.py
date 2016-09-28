@@ -6,6 +6,10 @@ class RepresentationAlreadyRegistered(Exception):
     pass
 
 
+class UnknownRepresentation(Exception):
+    pass
+
+
 class ValidatorAlreadyRegistered(Exception):
     pass
 
