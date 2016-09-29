@@ -86,12 +86,12 @@ post_detail = api.resource('posts/:pk')
 
 @post_list.get()
 def post_list_view(context):
-    return context.Response(Post.objects.all())  # 200 OK response
+    return context.OK(Post.objects.all())  # 200 OK response
 
 
 @post_detail.get()
 def post_detail_view(context, pk):
-    return context.Response(get_object_or_404(Post, pk=pk))
+    return context.OK(get_object_or_404(Post, pk=pk))
 
 
 # register representation factories
@@ -135,7 +135,7 @@ And browse your posts via http://localhost:8000/posts
 * Django 1.7
 * Django 1.8
 * Django 1.9
-* Django 1.10 (beta 1)
+* Django 1.10
 * Python 2.7
 
 ## Roadmap
