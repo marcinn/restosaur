@@ -1,7 +1,6 @@
 import functools
 import logging
 import sys
-import mimeparse
 import responses
 import urltemplate
 import urllib
@@ -17,6 +16,7 @@ from .representations import (
         RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
         Representation, Validator)
 from .utils import join_content_type_with_vnd, split_mediatype
+from . import contentnegotiation
 
 
 log = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ class Resource(object):
         if not mediatypes:
             raise NoMoreMediaTypes
 
-        mediatype = mimeparse.best_match(mediatypes, accept)
+        mediatype = contentnegotiation.best_match(mediatypes, accept)
 
         if not mediatype:
             raise NoMoreMediaTypes
@@ -188,7 +188,7 @@ class Resource(object):
         if ('CONTENT_TYPE' in request.META
                 and request.META.get('CONTENT_LENGTH')):
             if self._validators:
-                ctx.request_content_type = mimeparse.best_match(
+                ctx.request_content_type = contentnegotiation.best_match(
                     self._validators.keys(), request.META['CONTENT_TYPE'])
             else:
                 ctx.request_content_type = None

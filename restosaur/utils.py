@@ -1,4 +1,4 @@
-import mimeparse
+from . import contentnegotiation
 
 
 def model_to_dict(obj, context):
@@ -65,7 +65,7 @@ def split_mediatype(mt):
     Extra parameteres are returned as third element of the tuple.
     """
 
-    type_, subtype, args = mimeparse.parse_mime_type(mt)
+    type_, subtype, args = contentnegotiation.parse_media_type(mt)
     suffix = subtype.split('+')[-1] if '+' in subtype else None
 
     if suffix and suffix not in (
