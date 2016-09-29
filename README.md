@@ -103,7 +103,7 @@ def post_as_dict(post, context):
             'title': post.title,
             'content': post.content,
             # create link (URI) to this object
-            'href': context.url_for(post_detail, pk=post.pk),
+            'href': context.link(post_detail, post),
             }
 
 
