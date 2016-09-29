@@ -18,6 +18,11 @@ def to_url(urltemplate, params, strict=False):
     return uri
 
 
+def get_parameters(urltemplate):
+    params = RE_PARAMS.findall(urltemplate)
+    return map(lambda x: x[1], params)
+
+
 def remove_parameters(urltemplate):
     uri = urltemplate
 

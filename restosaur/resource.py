@@ -38,6 +38,7 @@ class Resource(object):
     def __init__(
             self, path, name=None, default_content_type='application/json'):
         self._path = path
+        self._required_parameters = urltemplate.get_parameters(self._path)
         self._callbacks = defaultdict(dict)
         self._registered_methods = set()
         self._name = name or resource_name_from_path(path)

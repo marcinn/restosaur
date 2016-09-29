@@ -1,21 +1,12 @@
-import functools
-from .responses import UnauthorizedResponse, ForbiddenResponse
+import warnings
 
+from .contrib.django.decorators import (  # NOQA
+        login_required, staff_member_required,
+    )
+from .deprecation import RemovedInRestosaur08Warning
 
-def login_required(func):
-    @functools.wraps(func)
-    def wrapped(request, *args, **kw):
-        if not request.user.is_authenticated():
-            return UnauthorizedResponse(request)
-        return func(request, *args, **kw)
-    return wrapped
-
-
-def staff_member_required(func):
-    @functools.wraps(func)
-    @login_required
-    def wrapped(request, *args, **kw):
-        if not request.user.is_staff:
-            return ForbiddenResponse(request)
-        return func(request, *args, **kw)
-    return wrapped
+warnings.warn(
+        '`%s` module is deprecated and will be removed in v0.8.'
+        'Please replace your imports using '
+        '``restosaur.contrib.django.decorators`` module' % __name__,
+        RemovedInRestosaur08Warning, stacklevel=2)

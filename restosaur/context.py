@@ -176,6 +176,32 @@ class Context(object):
             resource = load_resource(resource)
         return resource.uri(self, params=kwargs)
 
+    def link(self, resource, model=None, query=None):
+        """
+        Generate URL for `model` instance based on `resource`
+        path template.
+
+        Handy shortcut for `resource.uri()`
+        """
+
+        if not resource._required_parameters or not model:
+            return resource.uri(self, query=query)
+
+        params = {}
+
+        for parameter in resource._required_parameters:
+            try:
+                params[parameter] = getattr(model, parameter)
+            except AttributeError:
+                try:
+                    params[parameter] = model[parameter]
+                except (KeyError, TypeError, ValueError):
+                    raise ValueError(
+                        'Can\'t construct URL parameter "%s" from `%s`' % (
+                            parameter, model))
+
+        return resource.uri(self, params=params, query=query)
+
     def is_modified_since(self, dt):
         """
         Compares datetime `dt` with `If-Modified-Since` header value.
