@@ -36,7 +36,10 @@ class NoMoreMediaTypes(Exception):
 
 class Resource(object):
     def __init__(
-            self, path, name=None, default_content_type='application/json'):
+            self, api, path, name=None,
+            default_content_type='application/json',
+            link_model=None, link_name=None):
+        self._api = api
         self._path = path
         self._required_parameters = urltemplate.get_parameters(self._path)
         self._callbacks = defaultdict(dict)
@@ -49,12 +52,17 @@ class Resource(object):
         self.add_representation(content_type=self._default_content_type)
         self.add_validator(content_type=self._default_content_type)
 
+        if link_model:
+            self._api.register_view(
+                    model=link_model, resource=self, view_name=link_name)
+
         # register aliases for the decorators
         for verb in ('GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'):
             setattr(
                 self, verb.lower(), functools.partial(self._decorator, verb))
 
-    def _decorator(self, method, content_type=None, vnd=None):
+    def _decorator(
+            self, method, content_type=None, vnd=None):
         def wrapper(view):
             mt = _join_ct_vnd(content_type or self._default_content_type, vnd)
             if method in self._callbacks[mt]:
@@ -160,6 +168,17 @@ class Resource(object):
         for models in self._representations.values():
             result += models.values()
         return result
+
+    def model(self, view_name=None):
+        """
+        Decorator for registering `self` (the resource)
+        as a view for the model
+        """
+        def register_model(model_class):
+            self._api.register_view(
+                    model=model_class, resource=self, view_name=view_name)
+            return model_class
+        return register_model
 
     def _setup_response_ct_and_repr(self, ctx, accept):
         try:

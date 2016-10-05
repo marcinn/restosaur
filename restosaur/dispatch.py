@@ -18,7 +18,9 @@ def build_context(api, resource, request):
 
     parameters.update(QueryDict(request.GET.lists()))
 
-    ctx = Context(
+    context_class = api.context_class or Context
+
+    ctx = context_class(
             api, request=request, resource=resource,
             method=request.method, parameters=parameters, data=request.POST,
             files=request.FILES, raw=raw_body)

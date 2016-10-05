@@ -1,14 +1,26 @@
 from collections import defaultdict
+import types
 
 from .representations import (
         RepresentationAlreadyRegistered, UnknownRepresentation,
         Representation)
 from .resource import Resource
 from .utils import autodiscover, join_content_type_with_vnd
+from .loading import load_resource
+
+
+class ModelViewAlreadyRegistered(Exception):
+    pass
+
+
+class ModelViewNotRegistered(Exception):
+    pass
 
 
 class API(object):
-    def __init__(self, path=None, resources=None, middlewares=None):
+    def __init__(
+            self, path=None, resources=None, middlewares=None,
+            context_class=None):
         path = path or ''
         if path and not path.endswith('/'):
             path += '/'
@@ -18,12 +30,14 @@ class API(object):
         self.resources = resources or []
         self.middlewares = middlewares or []
         self._representations = defaultdict(dict)  # type->repr_key
+        self._model_views = defaultdict(dict)
+        self.context_class = context_class
 
     def add_resources(self, *resources):
         self.resources += resources
 
     def resource(self, *args, **kw):
-        obj = Resource(*args, **kw)
+        obj = Resource(self, *args, **kw)
         self.add_resources(obj)
         return obj
 
@@ -57,38 +71,54 @@ class API(object):
             raise UnknownRepresentation('%s: %s' % (
                             type_, repr_key))
 
-    def get_urls(self):
+    def resource_for_viewmodel(self, model, view_name=None):
         try:
-            from django.conf.urls import patterns, url, include
-        except ImportError:
-            from django.conf.urls import url, include
+            model_meta = self._model_views[model]
+        except KeyError:
+            raise ModelViewNotRegistered(
+                    'No views are registered for %s' % model)
 
-            def patterns(x, *urls):
-                return list(urls)
-
-        from django.views.decorators.csrf import csrf_exempt
-        from .dispatch import resource_dispatcher_factory
-        from . import urltemplate
-
-        urls = []
-
-        for resource in self.resources:
-            path = urltemplate.to_django_urlpattern(resource._path)
-            if path.startswith('/'):
-                path = path[1:]
-            urls.append(url(
-                '^%s$' % path, csrf_exempt(
-                    resource_dispatcher_factory(self, resource))))
-
-        return [url('^%s' % self.path, include(patterns('', *urls)))]
-
-    def urlpatterns(self):
         try:
-            from django.conf.urls import patterns, include
-        except ImportError:
-            return self.get_urls()
+            resource = model_meta[view_name]
+        except KeyError:
+            if not view_name:
+                raise ModelViewNotRegistered(
+                    'No default view registered for %s' % model)
+            else:
+                raise ModelViewNotRegistered(
+                    'View `%s` is not registered for %s' % (view_name, model))
         else:
-            return patterns('', (r'^', include(self.get_urls())))
+            if isinstance(resource, types.StringTypes):
+                resource = load_resource(resource)
+                model_meta[view_name] = resource
+            return resource
+
+    def register_view(self, model, resource, view_name=None):
+        if view_name in self._model_views[model]:
+            if view_name:
+                raise ModelViewAlreadyRegistered(
+                    '%s is already registered as a "%s" view' % (
+                        model, view_name))
+            else:
+                raise ModelViewAlreadyRegistered(
+                    '%s is already registered as a default view' % model)
+
+        self._model_views[model][view_name] = resource
+
+    def view(self, resource, view_name=None):
+        """
+        A shortcut decorator for registering a `model_class`
+        as as a `view_name` view of a `resource`.
+
+        The `resource` may be passed as a dotted string path
+        to avoid circular import problems.
+        """
+
+        def register_view_for_model(model_class):
+            self.register_view(
+                model_class, resource=resource, view_name=view_name)
+            return model_class
+        return register_view_for_model
 
     def autodiscover(self, *args, **kw):
         """

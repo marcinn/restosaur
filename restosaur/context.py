@@ -176,6 +176,12 @@ class Context(object):
             resource = load_resource(resource)
         return resource.uri(self, params=kwargs)
 
+    def link_model(self, model_instance, view_name=None, query=None):
+        resource = self.api.resource_for_viewmodel(
+                type(model_instance), view_name)
+        return self.link(
+                resource, model=model_instance, query=query)
+
     def link(self, resource, model=None, query=None):
         """
         Generate URL for `model` instance based on `resource`

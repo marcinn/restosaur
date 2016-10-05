@@ -59,7 +59,7 @@ class HTMLSerializer(object):
         return ctx.raw
 
     def dumps(self, data):
-        return data
+        return unicode(data)  # NOQA
 
 
 class AlreadyRegistered(Exception):

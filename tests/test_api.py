@@ -2,6 +2,7 @@ import json
 import unittest
 
 from restosaur import API
+from restosaur.contrib.django import API as DjangoAPI
 from restosaur.dispatch import resource_dispatcher_factory
 
 
@@ -28,14 +29,14 @@ class APIPathsTestCase(APITestCase):
         self.assertEqual(api.path, 'foo/')
 
     def test_that_root_url_pattern_does_not_contain_slash(self):
-        api = API('foo')
+        api = DjangoAPI('foo')
         api.resource('/')
         urls = api.get_urls()
         root_url = urls[0].url_patterns[0]
         self.assertFalse('/' in root_url._regex)
 
     def test_that_typical_url_pattern_does_not_contain_prepending_slash(self):
-        api = API('foo')
+        api = DjangoAPI('foo')
         api.resource('bar/')
         urls = api.get_urls()
         bar_url = urls[0].url_patterns[0]
@@ -63,4 +64,3 @@ class APIPathsTestCase(APITestCase):
         resp = self.call(api, root, 'get')
         resp_json = json.loads(resp.content)
         self.assertEqual(resp_json['root'], 'ok')
-

@@ -215,8 +215,8 @@ So in that case we need just to register it as a representation::
         # ...
 
 
-Linking to resources
---------------------
+Linking
+-------
 
 REST services are about representations and relations between them, so
 linking them together is fundamental. The links can be cathegorized as
@@ -224,7 +224,14 @@ internal and external. Internal links are handled by Restosaur, but
 external links may be just URIs passed as a strings.
 
 Let's complete the Post's representation by adding a URIs of every
-object. We'll use ``context.link()`` method to generate them::
+object.
+
+
+Linking to resources
+....................
+
+We'll use ``context.link()`` method to generate URL for a Post instance
+detail view::
 
     context.link(post_detail, post)
 
@@ -285,6 +292,77 @@ You need just to add this call to ``post_as_dict`` factory::
     and import it when needed::
        
         from webapi import api, get_object_or_404, json_link
+
+Linking to models
+.................
+
+Restosaur gives a possibility to register link views for your models.
+This approach is a next layer of encapsulation and DRY improvement.
+
+The low-level ``context.url_for()`` method requires a resource and
+path's specific arguments to generate the URL. There is no encapsulation
+at all, and DRY is broken.
+
+The ``context.link()`` shortcut encapsulates URL generation by passing
+resource and model instance as arguments. You don't need to repeat URL
+arguments.
+
+And finally ``context.link_model()`` shortcut encapsulates URL generation
+by referencing directly to the model instance or class. You don't need
+to provide resource nor argument at all. This level of
+resource linking encapsulation provides best DRY principles. 
+
+The ``context.link_model()`` requires model view registration. This can
+be done several ways:
+
+  * using a resource class decorator shourcut -- ``resource.model(ModelClass)``
+  * using an API instance -- ``api.register_view(ModelClass, resource)``
+  * using a class decorator on the model class -- ``@api.view(resource)``
+
+Example of using a resource shourtcut::
+
+    @post_detail.model(Post)
+    class Post(models.Model):
+        pass
+
+
+Example of using an API instance::
+
+    api.register_view(Post, post_detail)
+
+
+Example of using an API class decorator::
+
+    @api.view(post_detail)
+    class Post(models.Model):
+        pass
+
+
+.. note::
+
+    Buiding complex API you may split it into many modules. In that
+    cases there is a high risk of circular imports problem.
+
+    Linking shortcuts are designed to avoid import problems and
+    selecting a way of registering view for the model is highly
+    dependent on specific case.
+
+    To avoid circular import problems you may also pass dotted resource
+    path instead of resource instance::
+
+        api.register_view(Post, 'blog.restapi.post_detail')
+
+        # or using a decorator:
+
+        @api.view('blog.restapi.post_detail')
+        class Post(models.Model):
+            pass
+
+
+.. note::
+    
+    Model can be an object of any type, not only Django's
+    ``django.db.Model``. There is no limitation.
 
 
 Complete example of the module
