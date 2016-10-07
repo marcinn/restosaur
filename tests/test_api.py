@@ -4,6 +4,7 @@ import unittest
 from restosaur import API
 from restosaur.contrib.django import API as DjangoAPI
 from restosaur.dispatch import resource_dispatcher_factory
+from .utils import response_content_as_text
 
 
 class APITestCase(unittest.TestCase):
@@ -62,5 +63,5 @@ class APIPathsTestCase(APITestCase):
             return ctx.Response({'root': 'ok'})
 
         resp = self.call(api, root, 'get')
-        resp_json = json.loads(resp.content)
+        resp_json = json.loads(response_content_as_text(resp))
         self.assertEqual(resp_json['root'], 'ok')

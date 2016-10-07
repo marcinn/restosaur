@@ -1,5 +1,5 @@
 from collections import defaultdict
-import types
+import six
 
 from .representations import (
         RepresentationAlreadyRegistered, UnknownRepresentation,
@@ -20,14 +20,16 @@ class ModelViewNotRegistered(Exception):
 class API(object):
     def __init__(
             self, path=None, resources=None, middlewares=None,
-            context_class=None):
+            context_class=None, default_charset=None, debug=False):
         path = path or ''
         if path and not path.endswith('/'):
             path += '/'
         if path and path.startswith('/'):
             path = path[1:]
         self.path = path
+        self.debug = debug
         self.resources = resources or []
+        self.default_charset = default_charset or 'utf-8'
         self.middlewares = middlewares or []
         self._representations = defaultdict(dict)  # type->repr_key
         self._model_views = defaultdict(dict)
@@ -88,7 +90,7 @@ class API(object):
                 raise ModelViewNotRegistered(
                     'View `%s` is not registered for %s' % (view_name, model))
         else:
-            if isinstance(resource, types.StringTypes):
+            if isinstance(resource, six.string_types):
                 resource = load_resource(resource)
                 model_meta[view_name] = resource
             return resource

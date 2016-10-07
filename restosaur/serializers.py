@@ -1,6 +1,7 @@
 import json
 import datetime
 import decimal
+import six
 
 
 __all__ = [
@@ -36,7 +37,10 @@ class JsonSerializer(object):
         self._json = DateTimeJsonSerializer()
 
     def loads(self, ctx):
-        return self._json.loads(ctx.raw)
+        if isinstance(ctx.raw, bytes):
+            return self._json.loads(ctx.raw.decode(ctx.charset))
+        else:
+            return self._json.loads(ctx.raw)
 
     def dumps(self, data):
         return self._json.dumps(data)
@@ -59,7 +63,7 @@ class HTMLSerializer(object):
         return ctx.raw
 
     def dumps(self, data):
-        return unicode(data)  # NOQA
+        return six.text_type(data)
 
 
 class AlreadyRegistered(Exception):

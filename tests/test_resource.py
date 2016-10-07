@@ -5,6 +5,7 @@ from restosaur import API
 from restosaur.dispatch import resource_dispatcher_factory
 
 from django.test import SimpleTestCase
+from .utils import response_content_as_text
 
 
 class ResourceTestCase(unittest.TestCase):
@@ -42,7 +43,7 @@ class DefaultRepresentationTestCase(ResourceTestCase):
 
     def test_getting_valid_entity_content(self):
         resp = self.call(self.entity, 'get')
-        resp_json = json.loads(resp.content)
+        resp_json = json.loads(response_content_as_text(resp))
         self.assertTrue(resp_json['some'] == 'test')
 
     def test_raising_not_acceptable_for_unsupported_representation(self):
@@ -85,7 +86,7 @@ class SeeOtherTestCase(ResourceTestCase):
 
     def test_that_seeother_returns_no_content(self):
         resp = self.call(self.seeother, 'get')
-        self.assertEqual(resp.content, '')
+        self.assertEqual(response_content_as_text(resp), '')
 
     def test_that_seeother_returns_application_json_content_type(self):
         resp = self.call(self.seeother, 'get')
@@ -247,16 +248,20 @@ class ExceptionsHandlingTestCase(ResourceTestCase, SimpleTestCase):
     def setUp(self):
         super(ExceptionsHandlingTestCase, self).setUp()
 
-        self.exc_resource = self.api.resource('exception')
         self.notimpl_resource = self.api.resource('not-implemented')
-
-        @self.exc_resource.get()
-        def raise_some_exception(ctx):
-            raise Exception('Test exception')
 
         @self.notimpl_resource.get()
         def raise_not_impl_exception(ctx):
             raise NotImplementedError('This code is not implemented')
+
+    @property
+    def exc_resource(self):
+        resource = self.api.resource('exception')
+
+        @resource.get()
+        def raise_some_exception(ctx):
+            raise Exception('Test exception')
+        return resource
 
     def test_successful_returning_internal_server_error_status_500(self):
         resp = self.call(self.exc_resource, 'get')
@@ -264,41 +269,41 @@ class ExceptionsHandlingTestCase(ResourceTestCase, SimpleTestCase):
 
     def test_successful_returning_internal_server_error_message(self):
         resp = self.call(self.exc_resource, 'get')
-        resp_json = json.loads(resp.content)
+        resp_json = json.loads(response_content_as_text(resp))
         self.assertEqual(resp_json['error'], 'Test exception')
 
     def test_not_returning_internal_server_error_traceback_when_debug_is_off(self):  # NOQA
-        with self.settings(DEBUG=False):
-            resp = self.call(self.exc_resource, 'get')
-            resp_json = json.loads(resp.content)
-            self.assertFalse('traceback' in resp_json)
+        self.api = API('/', debug=False)
+        resp = self.call(self.exc_resource, 'get')
+        resp_json = json.loads(response_content_as_text(resp))
+        self.assertFalse('traceback' in resp_json)
 
     def test_successful_returning_internal_server_error_traceback_when_debug_is_on(self):  # NOQA
-        with self.settings(DEBUG=True):
-            resp = self.call(self.exc_resource, 'get')
-            resp_json = json.loads(resp.content)
-            self.assertTrue('traceback' in resp_json)
+        self.api = API('/', debug=True)
+        resp = self.call(self.exc_resource, 'get')
+        resp_json = json.loads(response_content_as_text(resp))
+        self.assertTrue('traceback' in resp_json)
 
     def test_returning_internal_server_error_traceback_as_list(self):
-        with self.settings(DEBUG=True):
-            resp = self.call(self.exc_resource, 'get')
-            resp_json = json.loads(resp.content)
-            self.assertTrue(isinstance(resp_json['traceback'], list))
+        self.api = API('/', debug=True)
+        resp = self.call(self.exc_resource, 'get')
+        resp_json = json.loads(response_content_as_text(resp))
+        self.assertTrue(isinstance(resp_json['traceback'], list))
 
     def test_returning_valid_internal_server_error_traceback_entity(self):
-        with self.settings(DEBUG=True):
-            resp = self.call(self.exc_resource, 'get')
-            resp_json = json.loads(resp.content)
-            entity = resp_json['traceback'][0]
+        self.api = API('/', debug=True)
+        resp = self.call(self.exc_resource, 'get')
+        resp_json = json.loads(response_content_as_text(resp))
+        entity = resp_json['traceback'][0]
 
-            self.assertTrue('source' in entity)
-            self.assertTrue('line' in entity)
-            self.assertTrue('fn' in entity)
-            self.assertTrue('file' in entity)
+        self.assertTrue('source' in entity)
+        self.assertTrue('line' in entity)
+        self.assertTrue('fn' in entity)
+        self.assertTrue('file' in entity)
 
     def test_successful_returning_not_implemented_error_message(self):
         resp = self.call(self.notimpl_resource, 'get')
-        resp_json = json.loads(resp.content)
+        resp_json = json.loads(response_content_as_text(resp))
         self.assertEqual(resp_json['error'], 'This code is not implemented')
 
     def test_successful_returning_not_implemented_error_status_501(self):

@@ -1,14 +1,9 @@
 import functools
 import logging
 import sys
-import responses
-import urltemplate
 import urllib
 
 from collections import OrderedDict, defaultdict
-
-from django.conf import settings
-from django.http import HttpResponse
 
 from .exceptions import Http404
 from .headers import normalize_header_name
@@ -16,7 +11,7 @@ from .representations import (
         RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
         Representation, Validator)
 from .utils import join_content_type_with_vnd, split_mediatype
-from . import contentnegotiation
+from . import contentnegotiation, responses, urltemplate
 
 
 log = logging.getLogger(__name__)
@@ -78,9 +73,9 @@ class Resource(object):
         def _drop_mt_args(x):
             return x.split(';')[0]
 
-        mediatypes = filter(
+        mediatypes = list(filter(
                 lambda x: _drop_mt_args(x) not in exclude, map(
-                    lambda x: x.media_type(), self.representations))
+                    lambda x: x.media_type(), self.representations)))
 
         if not mediatypes:
             raise NoMoreMediaTypes
@@ -130,6 +125,8 @@ class Resource(object):
         """
         RESTResponse -> HTTPResponse factory
         """
+
+        from django.http import HttpResponse
 
         if isinstance(response, HttpResponse):
             return response
@@ -192,7 +189,7 @@ class Resource(object):
                     response_content_type]
 
     def __call__(self, ctx, *args, **kw):
-        from django.http import Http404 as DjangoHttp404
+        from django.http import Http404 as DjangoHttp404, HttpResponse
 
         method = ctx.method
         request = ctx.request
@@ -275,7 +272,7 @@ class Resource(object):
         except Http404:
             return self._http_response(ctx.NotFound())
         except Exception as ex:
-            if settings.DEBUG:
+            if self._api.debug:
                 tb = sys.exc_info()[2]
             else:
                 tb = None

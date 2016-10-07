@@ -1,3 +1,4 @@
+import six
 import times
 import warnings
 
@@ -153,12 +154,12 @@ def exception_response_factory(context, ex, tb=None, extra=None):
     data = {}
     data.update(extra or {})
     data.update({
-        'error': unicode(ex),  # NOQA
+        'error': six.text_type(ex),
         })
 
     if tb:
         def stack_trace(x):
             return dict(zip(['file', 'line', 'fn', 'source'], x))
-        data['traceback'] = map(stack_trace, traceback.extract_tb(tb))
+        data['traceback'] = list(map(stack_trace, traceback.extract_tb(tb)))
 
     return cls(context=context, data=data)

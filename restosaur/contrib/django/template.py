@@ -1,7 +1,11 @@
 from __future__ import absolute_import
+
+import six
+
 from django.template.loader import render_to_string
 
 
+@six.python_2_unicode_compatible
 class HTMLTemplate(object):
     def __init__(self, context, template_name, template_context):
         self.context = context
@@ -9,7 +13,7 @@ class HTMLTemplate(object):
         self.template_context = template_context
         self._content = None
 
-    def __unicode__(self):
+    def __str__(self):
         if self._content is None:
             self._content = render_to_string(
                 request=self.context.request, template_name=self.template_name,

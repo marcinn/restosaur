@@ -9,7 +9,7 @@ def autogenerate_resource_name(resource):
     path = urltemplate.remove_parameters(resource.path)
 
     try:
-        name = filter(None, path.split('/'))[-1]
+        name = list(filter(None, path.split('/')))[-1]
     except IndexError:
         name = '/'
 

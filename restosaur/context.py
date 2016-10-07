@@ -1,15 +1,23 @@
 import collections
 import email
-import types
-import urllib
-import urlparse
+import six
 
-import responses
+try:
+    import urlparse
+except ImportError:
+    from urllib import parse as urlparse
+
+try:
+    from urllib import urlencode
+except ImportError:
+    from urllib.parse import urlencode
+
 import times
 # todo: implement own conversion utility
 from django.utils.encoding import force_bytes
 
 from .loading import load_resource
+from . import responses
 
 
 def parse_http_date(header, headers):
@@ -66,16 +74,15 @@ class QueryDict(collections.MutableMapping):
                 data = data.items()
             except AttributeError:
                 pass
-            finally:
-                keys = set([x[0] for x in data])
-                for key in keys:
-                    self._data[key] = []
-                for key, value in data:
-                    if isinstance(value, (types.ListType, types.TupleType)):
-                        for x in value:
-                            self._data[key].append(x)
-                    else:
-                        self._data[key].append(value)
+        keys = set([x[0] for x in data])
+        for key in keys:
+            self._data[key] = []
+        for key, value in data:
+            if isinstance(value, (list, tuple)):
+                for x in value:
+                    self._data[key].append(x)
+            else:
+                self._data[key].append(value)
 
     def items(self):
         result = []
@@ -113,9 +120,10 @@ class Context(object):
     def __init__(
             self, api, request, resource, method, parameters=None,
             body=None, data=None, files=None, raw=None, extra=None,
-            headers=None):
+            headers=None, charset=None):
         self.method = method
         self.api = api
+        self.charset = charset
         self.headers = headers or {}
         self.request = request
         self.body = body
@@ -159,12 +167,12 @@ class Context(object):
         enc = self.request.GET.encoding
 
         params.update(parameters or {})
-        params = map(
+        params = list(map(
                 lambda x: (x[0], force_bytes(x[1], enc)),
-                params.items())
+                params.items()))
 
         if params:
-            return '%s?%s' % (uri, urllib.urlencode(params))
+            return '%s?%s' % (uri, urlencode(params))
         else:
             return uri
 
@@ -172,7 +180,7 @@ class Context(object):
         """
         Shortcut wrapper of `resource.uri()`
         """
-        if isinstance(resource, types.StringTypes):
+        if isinstance(resource, six.string_types):
             resource = load_resource(resource)
         return resource.uri(self, params=kwargs)
 

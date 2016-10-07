@@ -4,6 +4,14 @@ from ...api import API as BaseAPI
 
 
 class API(BaseAPI):
+    def __init__(self, *args, **kw):
+        from django.conf import settings
+        charset = kw.pop('default_charset', None) or settings.DEFAULT_CHARSET
+        debug = kw.pop('debug', None) or settings.DEBUG
+        kw['default_charset'] = charset
+        kw['debug'] = debug
+        super(API, self).__init__(*args, **kw)
+
     def get_urls(self):
         try:
             from django.conf.urls import patterns, url, include

@@ -16,14 +16,15 @@ def build_context(api, resource, request):
     if request.resolver_match:
         parameters.update(request.resolver_match.kwargs)
 
-    parameters.update(QueryDict(request.GET.lists()))
+    parameters.update(QueryDict(list(request.GET.lists())))
 
     context_class = api.context_class or Context
 
     ctx = context_class(
             api, request=request, resource=resource,
             method=request.method, parameters=parameters, data=request.POST,
-            files=request.FILES, raw=raw_body)
+            files=request.FILES, raw=raw_body,
+            charset=request.encoding or api.default_charset)
 
     return ctx
 

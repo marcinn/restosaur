@@ -5,7 +5,6 @@ RE_PARAMS = re.compile('(/:([a-zA-Z_]+))')
 
 def to_url(urltemplate, params, strict=False):
     uri = urltemplate
-
     params_to_replace = RE_PARAMS.findall(urltemplate)
 
     if params_to_replace:
@@ -20,7 +19,7 @@ def to_url(urltemplate, params, strict=False):
 
 def get_parameters(urltemplate):
     params = RE_PARAMS.findall(urltemplate)
-    return map(lambda x: x[1], params)
+    return list(map(lambda x: x[1], params))
 
 
 def remove_parameters(urltemplate):

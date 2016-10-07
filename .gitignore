@@ -3,6 +3,7 @@
 /*.egg-info
 /dist
 /.env
+/.env3
 /build
 /.eggs
 /.coverage

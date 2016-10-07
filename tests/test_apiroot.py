@@ -4,7 +4,7 @@ import json
 from restosaur import API
 from restosaur.contrib.apiroot import ApiRoot
 from restosaur.dispatch import resource_dispatcher_factory
-
+from .utils import response_content_as_text
 
 class APIRootTestCase(unittest.TestCase):
     def setUp(self):
@@ -37,7 +37,7 @@ class RootPageTestCase(APIRootTestCase):
             return ctx.Entity()
 
         resp = self.call(self.root, 'get')
-        data = json.loads(resp.content)
+        data = json.loads(response_content_as_text(resp))
 
         self.assertFalse('bar' in data)
 
@@ -51,7 +51,7 @@ class RootPageTestCase(APIRootTestCase):
         self.apiroot.register(new_resource, 'bar')
 
         resp = self.call(self.root, 'get')
-        data = json.loads(resp.content)
+        data = json.loads(response_content_as_text(resp))
 
         self.assertTrue('bar' in data)
 
@@ -65,7 +65,7 @@ class RootPageTestCase(APIRootTestCase):
         self.apiroot.register(new_resource)
 
         resp = self.call(self.root, 'get')
-        data = json.loads(resp.content)
+        data = json.loads(response_content_as_text(resp))
 
         self.assertTrue('bar' in data)
 
@@ -79,7 +79,7 @@ class RootPageTestCase(APIRootTestCase):
         self.apiroot.register(new_resource)
 
         resp = self.call(self.root, 'get')
-        data = json.loads(resp.content)
+        data = json.loads(response_content_as_text(resp))
 
         self.assertEqual(data['bar'], 'http://testserver/foo/bar')
 
@@ -93,7 +93,7 @@ class RootPageTestCase(APIRootTestCase):
         self.apiroot.register(new_resource)
 
         resp = self.call(self.root, 'get')
-        data = json.loads(resp.content)
+        data = json.loads(response_content_as_text(resp))
 
         self.assertEqual(data['bar'], 'http://testserver/foo/bar/:id')
 
@@ -137,6 +137,6 @@ class ApiRootRootResourceRegistrationTestCase(unittest.TestCase):
         apiroot.register(bar)
 
         resp = self.call(self.root_resource, 'get')
-        data = json.loads(resp.content)
+        data = json.loads(response_content_as_text(resp))
 
         self.assertTrue('bar' in data)

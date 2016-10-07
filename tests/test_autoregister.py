@@ -15,7 +15,7 @@ class DjangoAppBasedAutodiscoverTestCase(SimpleTestCase):
         with self.settings(
                 ROOT_URLCONF='tests.urls_autoregister',
                 INSTALLED_APPS=['restosaur', 'tests.artest']):
-            from urls_autoregister import api
+            from .urls_autoregister import api
             self.assertEqual(len(api.resources), 1)
             self.assertEqual(api.resources[0].path, '/')
 
