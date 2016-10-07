@@ -1,5 +1,9 @@
-import unittest
+# coding: utf-8
+from __future__ import unicode_literals
+
 import datetime
+import six
+import unittest
 
 from restosaur import API, responses
 from restosaur.context import Context
@@ -64,7 +68,7 @@ class TestContextBuilidURI(ContextTestCase):
     def test_encoding_parameter(self):
         ctx = self.factory('get', '/foo/', lambda ctx: None)
         url = ctx.build_absolute_uri('/baz/', parameters={
-            'bar': 'za\xc5\xbc\xc3\xb3\xc5\x82\xc4\x87'
+            'bar': six.text_type('zażółć')
         })
         self.assertEqual(url, 'http://testserver/baz/?bar=za%C5%BC%C3%B3%C5%82%C4%87')
 
