@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='restosaur',
-      version='0.7.0',
+      version='0.7.0b1',
       description='Damn simple RESTful library',
       classifiers=[
         "Development Status :: 3 - Alpha",
