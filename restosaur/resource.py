@@ -295,7 +295,8 @@ class Resource(object):
             if isinstance(media, (list, tuple)):
                 content_types = map(split_mediatype, media)
             else:
-                content_types = [split_mediatype(media)]
+                content_types = [split_mediatype(
+                    media or self.default_content_type)]
 
             for ct, v, args in content_types:
                 self.add_representation(
