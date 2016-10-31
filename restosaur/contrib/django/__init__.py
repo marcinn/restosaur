@@ -1,6 +1,21 @@
 from __future__ import absolute_import
 
+from django.conf import settings
+from django.utils.encoding import force_unicode
+from django.views import debug
+
 from ...api import API as BaseAPI
+from ...representations import RestosaurException
+
+
+def django_html_exception(obj, ctx):
+    if settings.DEBUG:
+        resp = debug.technical_500_response(
+                ctx.request, exc_type=obj.exc_type,
+                exc_value=obj.exc_value,
+                tb=obj.tb, status_code=obj.status_code)
+        return force_unicode(resp.content)
+    return '<h1>Internal Server Error (%s)</h1>' % obj.status_code
 
 
 class API(BaseAPI):
@@ -44,3 +59,11 @@ class API(BaseAPI):
             return self.get_urls()
         else:
             return patterns('', (r'^', include(self.get_urls())))
+
+    def add_resources(self, *resources):
+        super(API, self).add_resources(*resources)
+
+        for resource in resources:
+            resource.add_representation(
+                    RestosaurException, content_type='text/html',
+                    _transform_func=django_html_exception)

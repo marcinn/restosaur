@@ -9,7 +9,7 @@ from .exceptions import Http404
 from .headers import normalize_header_name
 from .representations import (
         RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
-        Representation, Validator)
+        Representation, Validator, RestosaurException)
 from .utils import join_content_type_with_vnd, split_mediatype
 from . import contentnegotiation, responses, urltemplate
 
@@ -45,6 +45,8 @@ class Resource(object):
         self._default_content_type = default_content_type
 
         self.add_representation(content_type=self._default_content_type)
+        self.add_representation(
+                RestosaurException, content_type=self._default_content_type)
         self.add_validator(content_type=self._default_content_type)
 
         if link_model:

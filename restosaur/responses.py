@@ -4,6 +4,7 @@ import warnings
 
 from django.utils.http import http_date
 
+from .representations import RestosaurException
 from .utils import Collection
 
 
@@ -151,7 +152,7 @@ def exception_response_factory(context, ex, tb=None, extra=None):
     else:
         cls = InternalErrorResponse
 
-    data = {}
+    data = RestosaurException(ex, tb=tb)
     data.update(extra or {})
     data.update({
         'error': six.text_type(ex),
@@ -162,4 +163,7 @@ def exception_response_factory(context, ex, tb=None, extra=None):
             return dict(zip(['file', 'line', 'fn', 'source'], x))
         data['traceback'] = list(map(stack_trace, traceback.extract_tb(tb)))
 
-    return cls(context=context, data=data)
+    response = cls(context=context, data=data)
+    data.status_code = response.status
+
+    return response

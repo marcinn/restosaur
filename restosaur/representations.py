@@ -68,3 +68,12 @@ class Validator(object):
         Parses raw representation content and builds object
         """
         return self._validator_func(self.serializer.loads(context), context)
+
+
+class RestosaurException(dict):
+    def __init__(self, ex, tb=None):
+        super(RestosaurException, self).__init__()
+        self.exc_type = type(ex)
+        self.exc_value = ex
+        self.tb = tb
+        self.status_code = 500
