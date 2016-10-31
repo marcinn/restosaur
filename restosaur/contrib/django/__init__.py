@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
 from django.conf import settings
-from django.utils.encoding import force_unicode
+from django.utils.encoding import force_text
 from django.views import debug
 
 from ...api import API as BaseAPI
@@ -14,7 +14,7 @@ def django_html_exception(obj, ctx):
                 ctx.request, exc_type=obj.exc_type,
                 exc_value=obj.exc_value,
                 tb=obj.tb, status_code=obj.status_code)
-        return force_unicode(resp.content)
+        return force_text(resp.content)
     return '<h1>Internal Server Error (%s)</h1>' % obj.status_code
 
 
