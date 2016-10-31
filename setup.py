@@ -4,7 +4,7 @@ setup(name='restosaur',
       version='0.7.0b1-4',
       description='Damn simple RESTful library',
       classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Web Environment",
         "Framework :: Django",
         "Framework :: Django :: 1.8",
