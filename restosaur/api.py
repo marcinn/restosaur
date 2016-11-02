@@ -19,7 +19,7 @@ class ModelViewNotRegistered(Exception):
 
 class API(object):
     def __init__(
-            self, path=None, resources=None, middlewares=None,
+            self, path=None, middlewares=None,
             context_class=None, default_charset=None, debug=False):
         path = path or ''
         if path and not path.endswith('/'):
@@ -28,7 +28,7 @@ class API(object):
             path = path[1:]
         self.path = path
         self.debug = debug
-        self.resources = resources or []
+        self.resources = []
         self.default_charset = default_charset or 'utf-8'
         self.middlewares = middlewares or []
         self._representations = defaultdict(dict)  # type->repr_key
@@ -38,8 +38,8 @@ class API(object):
     def add_resources(self, *resources):
         self.resources += resources
 
-    def resource(self, *args, **kw):
-        obj = Resource(self, *args, **kw)
+    def resource(self, path, *args, **kw):
+        obj = Resource(self, path, *args, **kw)
         self.add_resources(obj)
         return obj
 

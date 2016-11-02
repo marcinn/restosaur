@@ -8,6 +8,9 @@ Restosaur is a RESTful foundation library for Python, which aims to be a
 transparent layer for building REST-like or RESTful services,
 adaptable to any web framework.
 
+**Restosaur helps you to adapt your data and business logic to
+a powerful RESTful service.**
+
 The key concepts are:
 
   * make library layer as transparent as possible,
@@ -43,6 +46,4 @@ you shold have possibility to do anything you want and use any tool you
 need.
 
 If you're using a web framework, you have decent tools already.
-Restosaur just helps you to adapt your data and business logic to
-a RESTful service.
 

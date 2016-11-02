@@ -21,10 +21,15 @@ def django_html_exception(obj, ctx):
 class API(BaseAPI):
     def __init__(self, *args, **kw):
         from django.conf import settings
+
         charset = kw.pop('default_charset', None) or settings.DEFAULT_CHARSET
-        debug = kw.pop('debug', None) or settings.DEBUG
+        debug = kw.pop('debug', settings.DEBUG)
+
+        self.append_slash = kw.pop('append_slash', False)
+
         kw['default_charset'] = charset
         kw['debug'] = debug
+
         super(API, self).__init__(*args, **kw)
 
     def get_urls(self):
@@ -44,8 +49,13 @@ class API(BaseAPI):
 
         for resource in self.resources:
             path = urltemplate.to_django_urlpattern(resource._path)
+
             if path.startswith('/'):
                 path = path[1:]
+
+            if not path.endswith('/') and self.append_slash:
+                path = path+'/'
+
             urls.append(url(
                 '^%s$' % path, csrf_exempt(
                     resource_dispatcher_factory(self, resource))))

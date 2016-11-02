@@ -4,8 +4,12 @@ import warnings
 
 from django.utils.http import http_date
 
+from .headers import normalize_header_name
 from .representations import RestosaurException
 from .utils import Collection
+
+
+NOTSET = 'NOTSET'
 
 
 def dummy_converter(x, context):
@@ -16,13 +20,18 @@ class Response(object):
     def __init__(
             self, context, data=None, status=200, headers=None,
             last_modified=None):
+
         self.headers = {}
-        self.headers.update(headers or {})
+
+        for key, value in (headers or {}).items():
+            self[key] = value
+
         self.representation = None
         self.content_type = None
         self.context = context
         self.status = status
         self.data = data
+
         if last_modified:
             self.set_last_modified(last_modified)
 
@@ -31,6 +40,14 @@ class Response(object):
             self.headers['Last-Modified'] = http_date(times.to_unix(dt))
         else:
             self.headers.pop('Last-Modified', None)
+
+    def __setitem__(self, name, value):
+        name = normalize_header_name(name)
+        self.headers[name] = value
+
+    def __getitem__(self, name):
+        name = normalize_header_name(name)
+        return self.headers[name]
 
 
 class OKResponse(Response):

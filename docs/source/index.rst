@@ -13,8 +13,8 @@ A nimble RESTful library for any Python web framework.
 
     about
     quickstart
+    guide
     status
-    guidelines
     api
     integrations
     roadmap
