@@ -1,5 +1,6 @@
 import collections
 import email
+import functools
 import six
 
 try:
@@ -233,6 +234,10 @@ class Context(object):
     @property
     def deserialized(self):
         return self.body
+
+    def wrap(self, func):
+        """Wrap `func` with the Context instance as an first argument"""
+        return functools.partial(func, self)
 
     # response factories
 
