@@ -6,9 +6,7 @@ import six
 import unittest
 
 from restosaur import API, responses
-from restosaur.context import Context
 from restosaur.dispatch import build_context
-from restosaur.resource import Resource
 
 
 class ContextTestCase(unittest.TestCase):
@@ -19,8 +17,11 @@ class ContextTestCase(unittest.TestCase):
 
         def create_context(method, path, resource, api=None, **kwargs):
             api = api or self.api
-            return Context(api, getattr(self.rqfactory, method)(path),
-                    resource, method, **kwargs)
+            request = getattr(self.rqfactory, method)(path)
+            return api.make_context(
+                    host=request.get_host(), path=request.path,
+                    request=request, resource=resource,
+                    method=method, **kwargs)
 
         self.api = API('/')
         self.api2 = API('webapi/')
@@ -43,11 +44,13 @@ class TestContextBuilidURI(ContextTestCase):
 
     def test_using_custom_location(self):
         ctx = self.factory('get', '/foo/', lambda ctx: None)
-        self.assertEqual(ctx.build_absolute_uri('/bar/'), 'http://testserver/bar/')
+        self.assertEqual(
+                ctx.build_absolute_uri('/bar/'), 'http://testserver/bar/')
 
     def test_appending_custom_parameter_to_current_location(self):
         ctx = self.factory('get', '/foo/', lambda ctx: None)
-        self.assertEqual(ctx.build_absolute_uri(parameters={'bar': 'baz'}),
+        self.assertEqual(
+                ctx.build_absolute_uri(parameters={'bar': 'baz'}),
                 'http://testserver/foo/?bar=baz')
 
     def test_appending_custom_parameter_to_custom_location(self):
@@ -70,7 +73,8 @@ class TestContextBuilidURI(ContextTestCase):
         url = ctx.build_absolute_uri('/baz/', parameters={
             'bar': six.text_type('zażółć')
         })
-        self.assertEqual(url, 'http://testserver/baz/?bar=za%C5%BC%C3%B3%C5%82%C4%87')
+        self.assertEqual(
+                url, 'http://testserver/baz/?bar=za%C5%BC%C3%B3%C5%82%C4%87')
 
     def test_generating_absolute_uri_using_request_path(self):
         ctx = self.factory('get', '/', lambda ctx: None)
@@ -90,53 +94,63 @@ class TestContextBuilidURI(ContextTestCase):
 
     def test_generating_absolute_uri_using_path_with_one_preceding_slash(self):
         ctx = self.factory('get', '', lambda ctx: None)
-        self.assertEqual(ctx.build_absolute_uri('/some'), 'http://testserver/some')
+        self.assertEqual(
+                ctx.build_absolute_uri('/some'), 'http://testserver/some')
 
-    def test_generating_absolute_uri_using_path_with_third_preceding_slashes(self):
+    def test_generating_absolute_uri_using_path_with_third_preceding_slashes(self):  # NOQA
         ctx = self.factory('get', '', lambda ctx: None)
-        self.assertEqual(ctx.build_absolute_uri('///some'), 'http://testserver/some')
+        self.assertEqual(
+                ctx.build_absolute_uri('///some'), 'http://testserver/some')
 
     def test_generating_absolute_uri_using_path_ending_with_slash(self):
         ctx = self.factory('get', '', lambda ctx: None)
-        self.assertEqual(ctx.build_absolute_uri('/some/'), 'http://testserver/some/')
+        self.assertEqual(
+                ctx.build_absolute_uri('/some/'), 'http://testserver/some/')
 
-    def test_not_replacing_hostname_when_using_two_prepending_slashes_in_build_absolute_uri(self):
+    def test_not_replacing_hostname_when_using_two_prepending_slashes_in_build_absolute_uri(self):  # NOQA
         ctx = self.factory('get', '', lambda ctx: None)
-        self.assertEqual(ctx.build_absolute_uri('//some/'), 'http://testserver/some/')
+        self.assertEqual(
+                ctx.build_absolute_uri('//some/'), 'http://testserver/some/')
 
-    def test_successful_generating_uri_using_shortcut_wrapper_to_resource(self):
+    def test_successful_generating_uri_using_shortcut_wrapper_to_resource(self):  # NOQA
         res = self.api.resource('foo/:pk')
         ctx = self.factory('get', '/bar/', lambda ctx: None)
         url = ctx.url_for(res, pk='test')
         self.assertEqual(url, 'http://testserver/foo/test')
 
     def test_generating_uri_for_prefixed_api_and_slash_as_path(self):
-        self.assertEqual(self.ctx2.build_absolute_uri('/'),
+        self.assertEqual(
+                self.ctx2.build_absolute_uri('/'),
                 'http://testserver/webapi/')
 
-    def test_generating_uri_for_prefixed_api_and_path_wihout_preceding_slash(self):
-        self.assertEqual(self.ctx2.build_absolute_uri('foo'),
+    def test_generating_uri_for_prefixed_api_and_path_wihout_preceding_slash(self):  # NOQA
+        self.assertEqual(
+                self.ctx2.build_absolute_uri('foo'),
                 'http://testserver/webapi/foo')
 
-    def test_generating_uri_for_prefixed_api_and_path_wihout_preceding_slash_but_ending_with_slash(self):
-        self.assertEqual(self.ctx2.build_absolute_uri('foo/'),
+    def test_generating_uri_for_prefixed_api_and_path_wihout_preceding_slash_but_ending_with_slash(self):  # NOQA
+        self.assertEqual(
+                self.ctx2.build_absolute_uri('foo/'),
                 'http://testserver/webapi/foo/')
 
-    def test_generating_uri_for_prefixed_api_without_slash_and_slash_as_path(self):
-        self.assertEqual(self.ctx3.build_absolute_uri('/'),
+    def test_generating_uri_for_prefixed_api_without_slash_and_slash_as_path(self):  # NOQA
+        self.assertEqual(
+                self.ctx3.build_absolute_uri('/'),
                 'http://testserver/webapi/')
 
-    def test_generating_uri_for_prefixed_api_without_slash_and_path_wihout_preceding_slash(self):
-        self.assertEqual(self.ctx3.build_absolute_uri('foo'),
+    def test_generating_uri_for_prefixed_api_without_slash_and_path_wihout_preceding_slash(self):  # NOQA
+        self.assertEqual(
+                self.ctx3.build_absolute_uri('foo'),
                 'http://testserver/webapi/foo')
 
-    def test_generating_uri_for_prefixed_api_without_slash_and_path_wihout_preceding_slash_but_ending_with_slash(self):
-        self.assertEqual(self.ctx3.build_absolute_uri('foo/'),
+    def test_generating_uri_for_prefixed_api_without_slash_and_path_wihout_preceding_slash_but_ending_with_slash(self):  # NOQA
+        self.assertEqual(
+                self.ctx3.build_absolute_uri('foo/'),
                 'http://testserver/webapi/foo/')
 
     def test_successful_building_uri_with_multivalue_query_arg(self):
         ctx = self.factory('get', '', lambda ctx: None)
-        uri = ctx.build_absolute_uri('/some', {'foo': ['bar','baz']})
+        uri = ctx.build_absolute_uri('/some', {'foo': ['bar', 'baz']})
         self.assertEqual(uri, 'http://testserver/some?foo=bar&foo=baz')
 
     def test_successful_getting_mutlivalue_GET_args(self):
@@ -151,7 +165,7 @@ class TestContextIfModifiedSince(ContextTestCase):
     def test_succesful_parse_rfc_1123_example_time(self):
         from restosaur.context import parse_http_date
         dt = parse_http_date('foo', {'foo': 'Tue, 15 Nov 1994 08:12:31 GMT'})
-        self.assertEqual(dt, datetime.datetime(1994,11,15,8,12,31))
+        self.assertEqual(dt, datetime.datetime(1994, 11, 15, 8, 12, 31))
 
     def test_error_parse_rfc_1123(self):
         from restosaur.context import parse_http_date
@@ -241,5 +255,3 @@ class TestContextResponseFactories(ContextTestCase):
     def test_seeother_response(self):
         obj = self.ctx.SeeOther('/')
         self.assertTrue(isinstance(obj, responses.SeeOtherResponse))
-
-

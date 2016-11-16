@@ -119,17 +119,22 @@ class QueryDict(collections.MutableMapping):
 
 class Context(object):
     def __init__(
-            self, api, request, resource, method, parameters=None,
-            body=None, data=None, files=None, raw=None, extra=None,
-            headers=None, charset=None):
+            self, api, host='localhost', path='/', method='GET',
+            parameters=None, body=None, data=None, files=None, raw=None,
+            extra=None, headers=None, charset=None, secure=False,
+            encoding='utf-8', resource=None, request=None):
         self.method = method
         self.api = api
         self.charset = charset
         self.headers = headers or {}
+        self.resource = resource
         self.request = request
+        self.encoding = encoding
+        self.secure = secure
+        self.host = host
+        self.path = path
         self.body = body
         self.raw = raw
-        self.resource = resource
         self.parameters = QueryDict(parameters)  # GET
         self.data = data or {}  # POST
         self.files = files or {}  # FILES
@@ -149,8 +154,7 @@ class Context(object):
 
         def build_uri(path):
             current = 'http%s://%s%s' % (
-                    's' if self.request.is_secure() else '',
-                    self.request.get_host(), self.request.path)
+                    's' if self.secure else '', self.host, self.path)
             return urlparse.urljoin(current, path)
 
         params = QueryDict()
@@ -162,10 +166,10 @@ class Context(object):
             uri = build_uri('/'+full_path)
         else:
             params.update(self.parameters.items())
-            uri = build_uri(self.request.path)
+            uri = build_uri(self.path)
 
         # todo: change to internal restosaur settings
-        enc = self.request.GET.encoding
+        enc = self.encoding
 
         params.update(parameters or {})
         params = list(map(

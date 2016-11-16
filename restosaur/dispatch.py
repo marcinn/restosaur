@@ -1,4 +1,4 @@
-from .context import Context, QueryDict
+from .context import QueryDict
 
 
 def build_context(api, resource, request):
@@ -18,15 +18,13 @@ def build_context(api, resource, request):
 
     parameters.update(QueryDict(list(request.GET.lists())))
 
-    context_class = api.context_class or Context
-
-    ctx = context_class(
-            api, request=request, resource=resource,
-            method=request.method, parameters=parameters, data=request.POST,
-            files=request.FILES, raw=raw_body,
-            charset=request.encoding or api.default_charset)
-
-    return ctx
+    return api.make_context(
+            host=request.get_host(), path=request.path,
+            method=request.method, parameters=parameters,
+            data=request.POST, files=request.FILES, raw=raw_body,
+            charset=request.encoding or api.default_charset,
+            secure=request.is_secure(), encoding=request.GET.encoding,
+            resource=resource, request=request)
 
 
 def resource_dispatcher_factory(api, resource):

@@ -158,6 +158,10 @@ class Resource(object):
         return self._name
 
     @property
+    def api(self):
+        return self._api
+
+    @property
     def path(self):
         return self._path
 

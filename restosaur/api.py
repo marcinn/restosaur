@@ -1,4 +1,5 @@
 from collections import defaultdict
+
 import six
 
 from .representations import (
@@ -7,6 +8,7 @@ from .representations import (
 from .resource import Resource
 from .utils import autodiscover, join_content_type_with_vnd
 from .loading import load_resource
+from .context import Context
 
 
 class ModelViewAlreadyRegistered(Exception):
@@ -33,7 +35,10 @@ class API(object):
         self.middlewares = middlewares or []
         self._representations = defaultdict(dict)  # type->repr_key
         self._model_views = defaultdict(dict)
-        self.context_class = context_class
+        self.context_class = context_class or Context
+
+    def make_context(self, **kwargs):
+        return self.context_class(self, **kwargs)
 
     def add_resources(self, *resources):
         self.resources += resources
