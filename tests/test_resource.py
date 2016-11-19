@@ -32,6 +32,10 @@ class DefaultRepresentationTestCase(ResourceTestCase):
         def entity_GET(ctx):
             return ctx.Entity({'some': 'test'})
 
+        @self.entity.post()
+        def entity_POST(ctx):
+            return ctx.Entity({'some': 'test'})
+
     def test_successful_getting_200_status_code(self):
         resp = self.call(self.entity, 'get')
         self.assertEqual(resp.status_code, 200)
@@ -46,22 +50,43 @@ class DefaultRepresentationTestCase(ResourceTestCase):
         resp_json = json.loads(response_content_as_text(resp))
         self.assertTrue(resp_json['some'] == 'test')
 
+    def test_POST_status_code_200(self):
+        resp = self.call(self.entity, 'post', content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+
+    def test_POST_valid_default_representation_content_type(self):
+        resp = self.call(self.entity, 'post', HTTP_ACCEPT='*/*')
+        self.assertEqual(resp['Content-Type'], 'application/json')
+
+    def test_POST_resulting_representation_content_type(self):
+        resp = self.call(self.entity, 'post', HTTP_ACCEPT='application/json')
+        self.assertEqual(resp['Content-Type'], 'application/json')
+
+    def test_POST_empty_content_when_no_representation_can_be_negotiated(self):
+        resp = self.call(
+                self.entity, 'post', HTTP_ACCEPT='application/eggsandmeat')
+        self.assertEqual(resp.content, '')
+
     def test_raising_not_acceptable_for_unsupported_representation(self):
         resp = self.call(
                 self.entity, 'get',
                 HTTP_ACCEPT='application/vnd.not-defined+json')
         self.assertEqual(resp.status_code, 406)
 
-    def test_raising_not_acceptable_for_unsupported_serializer(self):
+    def test_raising_406_not_acceptable_for_GET_and_unsupported_representation(self):  # NOQA
         resp = self.call(
                 self.entity, 'get', HTTP_ACCEPT='application/eggsandmeat')
         self.assertEqual(resp.status_code, 406)
 
-    def test_returning_fallback_application_json_content_type_for_unsupported_serializer(self):  # NOQA
+    def test_returning_default_content_type_for_GET_and_unsupported_representation(self):  # NOQA
         resp = self.call(
                 self.entity, 'get', HTTP_ACCEPT='application/eggsandmeat')
-        self.assertEqual(
-                resp['Content-Type'], self.entity._default_content_type)
+        self.assertEqual(resp['Content-Type'], self.entity.default_content_type)
+
+    def test_returning_nocontent_for_GET_and_unsupported_representation(self):  # NOQA
+        resp = self.call(
+                self.entity, 'get', HTTP_ACCEPT='application/eggsandmeat')
+        self.assertEqual(resp.content, '')
 
 
 class SeeOtherTestCase(ResourceTestCase):

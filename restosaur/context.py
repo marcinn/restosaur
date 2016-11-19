@@ -122,7 +122,8 @@ class Context(object):
             self, api, host='localhost', path='/', method='GET',
             parameters=None, body=None, data=None, files=None, raw=None,
             extra=None, headers=None, charset=None, secure=False,
-            encoding='utf-8', resource=None, request=None):
+            encoding='utf-8', resource=None, request=None, content_length=None,
+            content_type=None):
         self.method = method
         self.api = api
         self.charset = charset
@@ -139,7 +140,8 @@ class Context(object):
         self.data = data or {}  # POST
         self.files = files or {}  # FILES
         self.deserializer = None
-        self.content_type = None
+        self.content_type = content_type
+        self.content_length = content_length
         self.extra = extra or {}
 
     def build_absolute_uri(self, path=None, parameters=None):
@@ -240,55 +242,78 @@ class Context(object):
         return self.body
 
     def wrap(self, func):
-        """Wrap `func` with the Context instance as an first argument"""
-        return functools.partial(func, self)
+        """Wrap `func` with the Context instance as a last argument"""
+
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            args = list(args)+[self]
+            return func(*args, **kwargs)
+        return wrapped
 
     # response factories
 
-    def OK(self, *args, **kwargs):
+    def Continue(self, *args, **kwargs):  # 100
+        return responses.ContinueResponse(self, *args, **kwargs)
+
+    def OK(self, *args, **kwargs):  # 200
         return responses.OKResponse(self, *args, **kwargs)
 
-    def Response(self, *args, **kwargs):
+    def Response(self, *args, **kwargs):  # deprecated 200-like response
         return responses.Response(self, *args, **kwargs)
 
-    def Created(self, *args, **kwargs):
+    def Created(self, *args, **kwargs):  # 201
         return responses.CreatedResponse(self, *args, **kwargs)
 
-    def ValidationError(self, *args, **kwargs):
-        return responses.ValidationErrorResponse(self, *args, **kwargs)
+    def Accepted(self, *args, **kwargs):  # 202
+        return responses.AcceptedResponse(self, *args, **kwargs)
 
-    def NotAcceptable(self, *args, **kwargs):
-        return responses.NotAcceptableResponse(self, *args, **kwargs)
-
-    def UnsupportedMediaType(self, *args, **kwargs):
-        return responses.UnsupportedMediaTypeResponse(self, *args, **kwargs)
-
-    def NotFound(self, *args, **kwargs):
-        return responses.NotFoundResponse(self, *args, **kwargs)
-
-    def SeeOther(self, *args, **kwargs):
-        return responses.SeeOtherResponse(self, *args, **kwargs)
-
-    def NotModified(self, *args, **kwargs):
-        return responses.NotModifiedResponse(self, *args, **kwargs)
-
-    def MethodNotAllowed(self, *args, **kwargs):
-        return responses.MethodNotAllowedResponse(self, *args, **kwargs)
-
-    def Forbidden(self, *args, **kwargs):
-        return responses.ForbiddenResponse(self, *args, **kwargs)
-
-    def BadRequest(self, *args, **kwargs):
-        return responses.BadRequestResponse(self, *args, **kwargs)
-
-    def Unauthorized(self, *args, **kwargs):
-        return responses.UnauthorizedResponse(self, *args, **kwargs)
-
-    def NoContent(self, *args, **kwargs):
+    def NoContent(self, *args, **kwargs):  # 204
         return responses.NoContentResponse(self, *args, **kwargs)
 
-    def Entity(self, *args, **kwargs):
+    def MovedPermanently(self, *args, **kwargs):  # 301
+        return responses.MovedPermanentlyResponse(self, *args, **kwargs)
+
+    def Found(self, *args, **kwargs):  # 302
+        return responses.FoundResponse(self, *args, **kwargs)
+
+    def SeeOther(self, *args, **kwargs):  # 303
+        return responses.SeeOtherResponse(self, *args, **kwargs)
+
+    def NotModified(self, *args, **kwargs):  # 304
+        return responses.NotModifiedResponse(self, *args, **kwargs)
+
+    def BadRequest(self, *args, **kwargs):  # 400
+        return responses.BadRequestResponse(self, *args, **kwargs)
+
+    def Unauthorized(self, *args, **kwargs):  # 401
+        return responses.UnauthorizedResponse(self, *args, **kwargs)
+
+    def Forbidden(self, *args, **kwargs):  # 403
+        return responses.ForbiddenResponse(self, *args, **kwargs)
+
+    def NotFound(self, *args, **kwargs):  # 404
+        return responses.NotFoundResponse(self, *args, **kwargs)
+
+    def MethodNotAllowed(self, *args, **kwargs):  # 405
+        return responses.MethodNotAllowedResponse(self, *args, **kwargs)
+
+    def NotAcceptable(self, *args, **kwargs):  # 406
+        return responses.NotAcceptableResponse(self, *args, **kwargs)
+
+    def Conflict(self, *args, **kwargs):  # 409
+        return responses.ConflictResponse(self, *args, **kwargs)
+
+    def Gone(self, *args, **kwargs):  # 410
+        return responses.GoneResponse(self, *args, **kwargs)
+
+    def UnsupportedMediaType(self, *args, **kwargs):  # 415
+        return responses.UnsupportedMediaTypeResponse(self, *args, **kwargs)
+
+    def ValidationError(self, *args, **kwargs):  # 422 WEBDAV Deprecated
+        return responses.ValidationErrorResponse(self, *args, **kwargs)
+
+    def Entity(self, *args, **kwargs):  # deprecated, 200
         return responses.EntityResponse(self, *args, **kwargs)
 
-    def Collection(self, *args, **kwargs):
+    def Collection(self, *args, **kwargs):  # deprecated, 200
         return responses.CollectionResponse(self, *args, **kwargs)

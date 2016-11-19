@@ -6,12 +6,12 @@ import urllib
 from collections import OrderedDict, defaultdict
 
 from .exceptions import Http404
-from .headers import normalize_header_name
 from .representations import (
         RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
-        Representation, Validator, RestosaurException)
+        Representation, Validator, RestosaurException,
+        restosaur_exception_as_text)
 from .utils import join_content_type_with_vnd, split_mediatype
-from . import contentnegotiation, responses, urltemplate
+from . import contentnegotiation, responses, urltemplate, serializers
 
 
 log = logging.getLogger(__name__)
@@ -21,11 +21,26 @@ def _join_ct_vnd(content_type, vnd):
     return join_content_type_with_vnd(content_type, vnd)
 
 
+def dict_as_text(obj, ctx, depth=0):
+    output = u''
+
+    for key, value in obj.items():
+        if isinstance(value, dict):
+            value = u'\n'+dict_as_text(value, ctx, depth+1)
+        output += u'%s%s: %s\n' % (' '*depth*2, key, value)
+
+    return output
+
+
 def resource_name_from_path(path):
     return urltemplate.remove_parameters(path).strip('/')
 
 
 class NoMoreMediaTypes(Exception):
+    pass
+
+
+class NoRepresentationFound(Exception):
     pass
 
 
@@ -43,11 +58,30 @@ class Resource(object):
         self._representations = OrderedDict()
         self._validators = OrderedDict()
         self._default_content_type = default_content_type
+        self._supported_media_types = defaultdict(set)
 
-        self.add_representation(content_type=self._default_content_type)
+        # add generic 'application/json' representations (pass-through)
+
         self.add_representation(
-                RestosaurException, content_type=self._default_content_type)
-        self.add_validator(content_type=self._default_content_type)
+                dict, content_type='application/json')
+        self.add_representation(
+                RestosaurException, content_type='application/json')
+
+        # add generic 'text/plain' representations
+
+        self.add_representation(
+                RestosaurException, content_type='text/plain',
+                _transform_func=restosaur_exception_as_text,
+                qvalue=0.1)
+
+        self.add_representation(
+                dict, content_type='text/plain', _transform_func=dict_as_text,
+                qvalue=0.1)
+
+        # register "pass-through" validators
+
+        for content_type, serializer in serializers.get_all():
+            self.add_validator(content_type=content_type)
 
         if link_model:
             self._api.register_view(
@@ -58,14 +92,37 @@ class Resource(object):
             setattr(
                 self, verb.lower(), functools.partial(self._decorator, verb))
 
-    def _decorator(
-            self, method, content_type=None, vnd=None):
+    def is_callback_registered(self, method, content_type=None):
+        content_type = content_type or self._default_content_type
+        return method in self._callbacks[content_type]
+
+    def register_method_callback(self, callback, method, content_type=None):
+        content_type = content_type or self._default_content_type
+        self._callbacks[content_type][method] = callback
+        self._registered_methods.add(method)
+        self._supported_media_types[method].add(content_type)
+
+    def get_method_supported_mediatypes(self, method):
+        return list(self._supported_media_types[method])
+
+    def get_callback(self, method, content_type=None):
+        content_type = content_type or self._default_content_type
+        return self._callbacks[content_type][method]
+
+    def get_allowed_methods(self):
+        return list(self._registered_methods)
+
+    @property
+    def default_content_type(self):
+        return self._default_content_type
+
+    def _decorator(self, method, media=None):
         def wrapper(view):
-            mt = _join_ct_vnd(content_type or self._default_content_type, vnd)
-            if method in self._callbacks[mt]:
-                raise ValueError('%s already registered for %s' % (method, mt))
-            self._callbacks[mt][method] = view
-            self._registered_methods.add(method)
+            if self.is_callback_registered(method, content_type=media):
+                raise ValueError(
+                        'Method `%s` is already registered' % method)
+            self.register_method_callback(
+                    view, method=method, content_type=media)
             return view
         return wrapper
 
@@ -89,8 +146,11 @@ class Resource(object):
 
         return _drop_mt_args(mediatype)
 
-    def _match_representation(self, instance, ctx):
-        accept = ctx.headers.get('accept') or '*/*'
+    def _match_representation(self, instance, ctx, accept=None):
+
+        # Use "*/*" as default -- RFC 7231 (Section 5.3.2)
+        accept = accept or ctx.headers.get('accept') or '*/*'
+
         exclude = []
         model = type(instance)
         types = {}
@@ -119,11 +179,65 @@ class Resource(object):
             except KeyError:
                 pass
 
-        raise KeyError(
+        raise NoRepresentationFound(
             '%s has no registered representation handler for `%s`' % (
                 model, accept))
 
     def _http_response(self, response):
+        content = ''
+        content_type = self._default_content_type
+
+        if response.data is not None:
+            try:
+                representation = self._match_representation(
+                        response.data, response.context)
+            except NoRepresentationFound:
+                if isinstance(response, responses.SuccessfulResponse):
+                    return self._http_response(
+                        responses.NotAcceptableResponse(
+                            response.context, headers=response.headers))
+                elif isinstance(response, (
+                        responses.ServerErrorResponse,
+                        responses.ClientErrorResponse)):
+                    # For errors use any representation supported by
+                    # server. It is better to provide any information
+                    # in any format instead of nothing.
+                    # -- RFC7231 (Section 6.5 & 6.6)
+                    #
+                    # Restosaur will try to match most acceptible
+                    # representation.
+
+                    accept = response.context.headers.get('accept')
+                    accepting = ['*/*;q=0.1']
+
+                    if accept:
+                        media_type, media_subtype = accept.split('/')
+                        accepting.insert(0, '%s/*;q=1' % media_type)
+
+                    try:
+                        representation = self._match_representation(
+                                response.data, response.context,
+                                accept=','.join(accepting))
+                    except NoRepresentationFound:
+                        # return no content and preserve status code
+                        pass
+                    else:
+                        content = representation.render(
+                                response.context, response.data)
+                        content_type = _join_ct_vnd(
+                               representation.content_type, representation.vnd)
+                else:
+                    # return no content and preserve status code
+                    pass
+            else:
+                content = representation.render(
+                        response.context, response.data)
+                content_type = _join_ct_vnd(
+                       representation.content_type, representation.vnd)
+
+        return self._do_http_response(response, content, content_type)
+
+    def _do_http_response(self, response, content, content_type):
         """
         RESTResponse -> HTTPResponse factory
         """
@@ -132,16 +246,6 @@ class Resource(object):
 
         if isinstance(response, HttpResponse):
             return response
-
-        context = response.context
-        content_type = context.response_content_type
-        content = ''
-
-        if response.data is not None:
-            representation = self._match_representation(response.data, context)
-            content = representation.render(context, response.data)
-            content_type = _join_ct_vnd(
-                   representation.content_type, representation.vnd)
 
         httpresp = HttpResponse(content, status=response.status)
 
@@ -183,97 +287,85 @@ class Resource(object):
             return model_class
         return register_model
 
-    def _setup_response_ct_and_repr(self, ctx, accept):
-        try:
-            response_content_type = self._match_media_type(accept)
-        except NoMoreMediaTypes:
-            ctx.response_content_type = None
-            ctx.response_representations = {}
-        else:
-            ctx.response_content_type = response_content_type
-            ctx.response_representations = self._representations[
-                    response_content_type]
-
     def __call__(self, ctx, *args, **kw):
-        from django.http import Http404 as DjangoHttp404, HttpResponse
+        from django.http import Http404 as DjangoHttp404
 
         method = ctx.method
         request = ctx.request
 
-        # prepare request headers
+        # support for X-HTTP-METHOD-OVERRIDE
 
-        headers = request.META.items()
-        http_headers = dict(map(
-            lambda x: (normalize_header_name(x[0]), x[1]),
-            filter(lambda x: x[0].startswith('HTTP_'), headers)))
-        ctx.headers.update(http_headers)
+        method = ctx.headers.get('x-http-method-override') or method
 
-        if ('CONTENT_TYPE' in request.META
-                and request.META.get('CONTENT_LENGTH')):
-            if self._validators:
+        # Check request method and raise MethodNotAllowed if unsupported
+
+        allowed_methods = self.get_allowed_methods()
+
+        if method not in allowed_methods:
+            headers = {
+                    'Allow': ', '.join(allowed_methods),
+                }
+            return self._http_response(ctx.MethodNotAllowed({
+                'error': 'Method `%s` is not registered for resource `%s`' % (
+                    method, self._path)}, headers=headers))
+
+        # Negotiate payload content type and store the best matching
+        # result in ctx.request_content_type
+
+        if ctx.content_type and ctx.content_length:
+            media_types = self.get_method_supported_mediatypes(method)
+            if media_types:
                 ctx.request_content_type = contentnegotiation.best_match(
-                    self._validators.keys(), request.META['CONTENT_TYPE'])
+                        media_types, ctx.content_type)
             else:
+                # server does not support any representation
                 ctx.request_content_type = None
+        elif ctx.content_length:
+            # No payload content-type was provided.
+            # According to RFC7231 (Section 3.1.1.5) server may assume
+            # "application/octet-stream" or try to examine the type.
+
+            ctx.request_content_type = 'application/octet-stream'
         else:
-            ctx.request_content_type = self._default_content_type
+            # No payload
+            ctx.request_content_type = None
 
         # match response representation, serializer and content type
 
-        self._setup_response_ct_and_repr(
-            ctx, ctx.headers.get('accept') or self._default_content_type)
-
-        if method not in self._registered_methods:
-            return self._http_response(ctx.MethodNotAllowed({
-                'error': 'Method `%s` is not registered for resource `%s`' % (
-                    method, self._path)}))
-
-        try:
-            content_length = int(request.META['CONTENT_LENGTH'])
-        except (KeyError, TypeError, ValueError):
-            content_length = 0
-
-        if content_length and 'CONTENT_TYPE' in request.META:
+        if ctx.content_length and ctx.content_type:
             if ctx.request_content_type:
-                ctx.validator = self._validators[ctx.request_content_type]
                 if request.body:
-                    ctx.body = ctx.validator.parse(ctx)
-            elif not content_length:
-                self.body = None
+                    try:
+                        ctx.validator = self._validators[
+                                    ctx.request_content_type]
+                    except KeyError:
+                        pass
+                    else:
+                        try:
+                            ctx.body = ctx.validator.parse(ctx)
+                        except serializers.DeserializationError as ex:
+                            resp = responses.exception_response_factory(
+                                    ctx, ex, cls=responses.BadRequestResponse)
+                            return self._http_response(resp)
+            elif not ctx.content_length:
+                ctx.body = None
             else:
-                self._setup_response_ct_and_repr(
-                        ctx, self._default_content_type)
                 return self._http_response(ctx.UnsupportedMediaType())
 
-        ctx.content_type = request.META.get('CONTENT_TYPE')
-
-        if content_length and not ctx.response_representations:
-            self._setup_response_ct_and_repr(ctx, self._default_content_type)
-            return HttpResponse(
-                    'Not acceptable `%s`' % ctx.headers.get('accept'),
-                    status=406)
-
-        # support for X-HTTP-METHOD-OVERRIDE
-        method = http_headers.get('x-http-method-override') or method
-
         log.debug('Calling %s, %s, %s' % (method, args, kw))
+
         try:
+            callback = self.get_callback(method, ctx.request_content_type)
+
             try:
-                resp = self._callbacks[ctx.request_content_type][method](
-                        ctx, *args, **kw)
+                resp = callback(ctx, *args, **kw)
             except DjangoHttp404:
                 raise Http404
             else:
                 if not resp:
                     raise TypeError(
-                            'Method `%s` does not return '
-                            'a response object' % self._callbacks[
-                                ctx.request_content_type][method])
-                if not ctx.response_representations and resp.data is not None:
-                    self._setup_response_ct_and_repr(
-                            ctx, self._default_content_type)
-                    return self._http_response(ctx.NotAcceptable())
-
+                            'Function `%s` does not return '
+                            'a response object' % callback)
                 return self._http_response(resp)
         except Http404:
             return self._http_response(ctx.NotFound())
@@ -282,9 +374,6 @@ class Resource(object):
                 tb = sys.exc_info()[2]
             else:
                 tb = None
-            ctx.response_content_type = self._default_content_type
-            ctx.response_representations = {None: Representation(
-                        content_type=ctx.response_content_type)}
             resp = responses.exception_response_factory(ctx, ex, tb)
             log.exception(
                     'Internal Server Error: %s', ctx.request.path,
@@ -295,6 +384,11 @@ class Resource(object):
                     }
             )
             return self._http_response(resp)
+
+    def accept(self, media_type=None):
+        media_type = media_type or self._default_content_type
+        ct, vnd = split_mediatype(media_type)
+        return self.validator(content_type=ct, vnd=vnd)
 
     def representation(self, model=None, media=None, serializer=None):
         def wrapped(func):

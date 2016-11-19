@@ -50,5 +50,5 @@ class ApiRoot(object):
             for name, resource in self.resources.items():
                 data[name] = resource.uri(ctx)
 
-            return ctx.Entity(data)
+            return ctx.OK(data)
         return get_api_root

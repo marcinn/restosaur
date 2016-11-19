@@ -114,16 +114,13 @@ class ApiRootRootResourceRegistrationTestCase(unittest.TestCase):
 
     def test_successful_registration_as_a_GET_method(self):
         ApiRoot(self.root_resource)
-        self.assertTrue(
-                'GET' in self.root_resource._callbacks[
-                    self.root_resource._default_content_type])
+        self.assertTrue(self.root_resource.is_callback_registered('GET'))
 
     def test_successful_registration_proper_apiroot_func(self):
         apiroot = ApiRoot(self.root_resource)
         rootfuncname = apiroot.as_view().__name__
         self.assertEqual(
-                self.root_resource._callbacks[
-                    self.root_resource._default_content_type]['GET'].__name__,
+                self.root_resource.get_callback('GET').__name__,
                 rootfuncname)
 
     def test_exception_at_second_registration_apiroot_to_same_rootresource(self):

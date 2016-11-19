@@ -1,4 +1,5 @@
 from .context import QueryDict
+from .headers import normalize_header_name
 
 
 def build_context(api, resource, request):
@@ -18,13 +19,25 @@ def build_context(api, resource, request):
 
     parameters.update(QueryDict(list(request.GET.lists())))
 
+    headers = dict(map(
+        lambda x: (normalize_header_name(x[0]), x[1]),
+        filter(lambda x: x[0].startswith('HTTP_'), request.META.items())))
+
+    try:
+        content_length = int(request.META['CONTENT_LENGTH'])
+    except (KeyError, TypeError, ValueError):
+        content_length = 0
+
+    content_type = request.META.get('CONTENT_TYPE')
+
     return api.make_context(
             host=request.get_host(), path=request.path,
             method=request.method, parameters=parameters,
             data=request.POST, files=request.FILES, raw=raw_body,
             charset=request.encoding or api.default_charset,
             secure=request.is_secure(), encoding=request.GET.encoding,
-            resource=resource, request=request)
+            resource=resource, request=request, headers=headers,
+            content_type=content_type, content_length=content_length)
 
 
 def resource_dispatcher_factory(api, resource):

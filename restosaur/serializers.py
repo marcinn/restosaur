@@ -9,6 +9,18 @@ __all__ = [
         'default_serializers']
 
 
+class SerializeDeserializeError(Exception):
+    pass
+
+
+class DeserializationError(SerializeDeserializeError):
+    pass
+
+
+class SerializationError(SerializeDeserializeError):
+    pass
+
+
 class DefaultRestfulEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime.datetime):
@@ -25,11 +37,16 @@ class DefaultRestfulEncoder(json.JSONEncoder):
 
 class DateTimeJsonSerializer(object):
     def dumps(self, obj):
-        return json.dumps(obj, cls=DefaultRestfulEncoder)
+        try:
+            return json.dumps(obj, cls=DefaultRestfulEncoder)
+        except (TypeError, ValueError) as ex:
+            raise SerializationError(ex)
 
     def loads(self, txt):
-        obj = json.loads(txt)
-        return obj
+        try:
+            return json.loads(txt)
+        except (TypeError, ValueError) as ex:
+            raise DeserializationError(ex)
 
 
 class JsonSerializer(object):
@@ -38,12 +55,21 @@ class JsonSerializer(object):
 
     def loads(self, ctx):
         if isinstance(ctx.raw, bytes):
-            return self._json.loads(ctx.raw.decode(ctx.charset))
+            try:
+                return self._json.loads(ctx.raw.decode(ctx.charset))
+            except (TypeError, ValueError) as ex:
+                raise DeserializationError(ex)
         else:
-            return self._json.loads(ctx.raw)
+            try:
+                return self._json.loads(ctx.raw)
+            except (TypeError, ValueError) as ex:
+                raise DeserializationError(ex)
 
     def dumps(self, data):
-        return self._json.dumps(data)
+        try:
+            return self._json.dumps(data)
+        except (TypeError, ValueError) as ex:
+            raise SerializationError(ex)
 
 
 class MultiPartFormDataSerializer(object):
@@ -63,7 +89,23 @@ class HTMLSerializer(object):
         return ctx.raw
 
     def dumps(self, data):
-        return six.text_type(data)
+        try:
+            return six.text_type(data)
+        except (TypeError, ValueError, UnicodeEncodeError,
+                UnicodeDecodeError) as ex:
+            raise SerializationError(ex)
+
+
+class PlainTextSerializer(object):
+    def loads(self, ctx):
+        return ctx.raw
+
+    def dumps(self, data):
+        try:
+            return six.text_type(data)
+        except (TypeError, ValueError, UnicodeEncodeError,
+                UnicodeDecodeError) as ex:
+            raise SerializationError(ex)
 
 
 class AlreadyRegistered(Exception):
@@ -102,6 +144,8 @@ default_serializers.register(
 default_serializers.register(
         'text/html', HTMLSerializer())
 default_serializers.register(
+        'text/plain', PlainTextSerializer())
+default_serializers.register(
         'multipart/form-data', MultiPartFormDataSerializer())
 
 
@@ -111,3 +155,7 @@ def register(mimetype, serializer):
 
 def get(mimetype):
     return default_serializers[mimetype]
+
+
+def get_all():
+    return default_serializers.items()

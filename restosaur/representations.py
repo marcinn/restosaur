@@ -1,3 +1,5 @@
+import traceback
+
 from .utils import Collection, join_content_type_with_vnd
 from . import serializers
 
@@ -77,3 +79,10 @@ class RestosaurException(dict):
         self.exc_value = ex
         self.tb = tb
         self.status_code = 500
+
+
+def restosaur_exception_as_text(obj, ctx):
+    output = u'\n'.join(
+            traceback.format_exception(obj.exc_type, obj.exc_value, obj.tb))
+
+    return output
