@@ -65,7 +65,7 @@ class DefaultRepresentationTestCase(ResourceTestCase):
     def test_POST_empty_content_when_no_representation_can_be_negotiated(self):
         resp = self.call(
                 self.entity, 'post', HTTP_ACCEPT='application/eggsandmeat')
-        self.assertEqual(resp.content, '')
+        self.assertEqual(resp.content, b'')
 
     def test_raising_not_acceptable_for_unsupported_representation(self):
         resp = self.call(
@@ -86,7 +86,7 @@ class DefaultRepresentationTestCase(ResourceTestCase):
     def test_returning_nocontent_for_GET_and_unsupported_representation(self):  # NOQA
         resp = self.call(
                 self.entity, 'get', HTTP_ACCEPT='application/eggsandmeat')
-        self.assertEqual(resp.content, '')
+        self.assertEqual(resp.content, b'')
 
 
 class SeeOtherTestCase(ResourceTestCase):
