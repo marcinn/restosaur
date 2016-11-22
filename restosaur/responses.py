@@ -4,8 +4,7 @@ import warnings
 
 from django.utils.http import http_date
 
-from .headers import normalize_header_name
-from .representations import RestosaurException
+from .representations import RestosaurExceptionDict
 from .utils import Collection
 
 
@@ -22,7 +21,7 @@ class StatusCodeMismatch(ValueError):
             '%s' % (self.class_name, self.status_code))
 
 
-class Response(object):
+class BaseResponse(object):
     def __init__(
             self, context, data=None, status=200, headers=None,
             last_modified=None):
@@ -66,31 +65,31 @@ class Response(object):
         pass
 
 
-class InformationalResponse(Response):
+class InformationalResponse(BaseResponse):
     def _validate_status_code(self, status):
         if status < 100 or status >= 200:
             raise StatusCodeMismatch('Informational', status)
 
 
-class SuccessfulResponse(Response):
+class SuccessfulResponse(BaseResponse):
     def _validate_status_code(self, status):
         if status < 200 or status >= 300:
             raise StatusCodeMismatch('Successful', status)
 
 
-class RedirectionResponse(Response):
+class RedirectionResponse(BaseResponse):
     def _validate_status_code(self, status):
         if status < 300 or status >= 400:
             raise StatusCodeMismatch('Redirection', status)
 
 
-class ClientErrorResponse(Response):
+class ClientErrorResponse(BaseResponse):
     def _validate_status_code(self, status):
         if status < 400 or status >= 500:
             raise StatusCodeMismatch('ClientError', status)
 
 
-class ServerErrorResponse(Response):
+class ServerErrorResponse(BaseResponse):
     def _validate_status_code(self, status):
         if status < 500 or status >= 600:
             raise StatusCodeMismatch('ServerError', status)
@@ -103,7 +102,9 @@ class ContinueResponse(InformationalResponse):
 
 
 class OKResponse(SuccessfulResponse):
-    pass
+    def __init__(self, context, data=None, headers=None):
+        super(OKResponse, self).__init__(
+                context, data=data, status=200, headers=headers)
 
 
 class CreatedResponse(SuccessfulResponse):
@@ -246,8 +247,11 @@ class CollectionResponse(SuccessfulResponse):
                 context, data=coll_obj, **kwargs)
 
 
-class EntityResponse(SuccessfulResponse):
+class EntityResponse(OKResponse):
     pass
+
+
+Response = OKResponse
 
 
 class ValidationErrorResponse(ClientErrorResponse):
@@ -268,7 +272,7 @@ def exception_response_factory(context, ex, tb=None, extra=None, cls=None):
         else:
             cls = InternalErrorResponse
 
-    data = RestosaurException(ex, tb=tb)
+    data = RestosaurExceptionDict(ex, tb=tb)
     data.update(extra or {})
     data.update({
         'error': six.text_type(ex),

@@ -5,7 +5,7 @@ from django.utils.encoding import force_text
 from django.views import debug
 
 from ...api import API as BaseAPI
-from ...representations import RestosaurException
+from ...representations import RestosaurExceptionDict
 
 
 def django_html_exception(obj, ctx):
@@ -31,6 +31,10 @@ class API(BaseAPI):
         kw['debug'] = debug
 
         super(API, self).__init__(*args, **kw)
+
+        self.add_representation(
+                RestosaurExceptionDict, content_type='text/html',
+                _transform_func=django_html_exception)
 
     def get_urls(self):
         try:
@@ -69,11 +73,3 @@ class API(BaseAPI):
             return self.get_urls()
         else:
             return patterns('', (r'^', include(self.get_urls())))
-
-    def add_resources(self, *resources):
-        super(API, self).add_resources(*resources)
-
-        for resource in resources:
-            resource.add_representation(
-                    RestosaurException, content_type='text/html',
-                    _transform_func=django_html_exception)

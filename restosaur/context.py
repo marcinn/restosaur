@@ -88,7 +88,7 @@ class QueryDict(collections.MutableMapping):
     def items(self):
         result = []
         for key, values in self._data.items():
-            result += map(lambda x: (key, x), values)
+            result += list(map(lambda x: (key, x), values))
         return result
 
     def getlist(self, key, default=None):
@@ -259,7 +259,7 @@ class Context(object):
         return responses.OKResponse(self, *args, **kwargs)
 
     def Response(self, *args, **kwargs):  # deprecated 200-like response
-        return responses.Response(self, *args, **kwargs)
+        return self.OK(*args, **kwargs)
 
     def Created(self, *args, **kwargs):  # 201
         return responses.CreatedResponse(self, *args, **kwargs)

@@ -6,6 +6,7 @@ from restosaur.contrib.apiroot import ApiRoot
 from restosaur.dispatch import resource_dispatcher_factory
 from .utils import response_content_as_text
 
+
 class APIRootTestCase(unittest.TestCase):
     def setUp(self):
         super(APIRootTestCase, self).setUp()
@@ -15,7 +16,7 @@ class APIRootTestCase(unittest.TestCase):
         self.api = API('foo')
         self.apiroot = ApiRoot()
         self.root = self.api.resource('/')
-        self.root.get()(self.apiroot.as_view()) # register root view
+        self.root.get()(self.apiroot.as_view())  # register root view
 
         self.rqfactory = RequestFactory()
 

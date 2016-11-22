@@ -8,8 +8,7 @@ from collections import OrderedDict, defaultdict
 from .exceptions import Http404
 from .representations import (
         RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
-        Representation, Validator, RestosaurException,
-        restosaur_exception_as_text)
+        Representation, Validator)
 from .utils import join_content_type_with_vnd, split_mediatype
 from . import contentnegotiation, responses, urltemplate, serializers
 
@@ -60,24 +59,6 @@ class Resource(object):
         self._default_content_type = default_content_type
         self._supported_media_types = defaultdict(set)
 
-        # add generic 'application/json' representations (pass-through)
-
-        self.add_representation(
-                dict, content_type='application/json')
-        self.add_representation(
-                RestosaurException, content_type='application/json')
-
-        # add generic 'text/plain' representations
-
-        self.add_representation(
-                RestosaurException, content_type='text/plain',
-                _transform_func=restosaur_exception_as_text,
-                qvalue=0.1)
-
-        self.add_representation(
-                dict, content_type='text/plain', _transform_func=dict_as_text,
-                qvalue=0.1)
-
         # register "pass-through" validators
 
         for content_type, serializer in serializers.get_all():
@@ -116,17 +97,17 @@ class Resource(object):
     def default_content_type(self):
         return self._default_content_type
 
-    def _decorator(self, method, media=None):
+    def _decorator(self, method, accept=None):
         def wrapper(view):
-            if self.is_callback_registered(method, content_type=media):
+            if self.is_callback_registered(method, content_type=accept):
                 raise ValueError(
                         'Method `%s` is already registered' % method)
             self.register_method_callback(
-                    view, method=method, content_type=media)
+                    view, method=method, content_type=accept)
             return view
         return wrapper
 
-    def _match_media_type(self, accept, exclude=None):
+    def _match_media_type(self, accept, representations, exclude=None):
         exclude = exclude or []
 
         def _drop_mt_args(x):
@@ -134,7 +115,7 @@ class Resource(object):
 
         mediatypes = list(filter(
                 lambda x: _drop_mt_args(x) not in exclude, map(
-                    lambda x: x.media_type(), self.representations)))
+                    lambda x: x.media_type(), representations)))
 
         if not mediatypes:
             raise NoMoreMediaTypes
@@ -153,31 +134,24 @@ class Resource(object):
 
         exclude = []
         model = type(instance)
-        types = {}
+
+        representations = self.representations
 
         while True:
             try:
-                mediatype = self._match_media_type(accept, exclude=exclude)
+                mediatype = self._match_media_type(
+                        accept, representations, exclude=exclude)
             except NoMoreMediaTypes:
                 break
 
-            try:
-                types = self._representations[mediatype]
-            except KeyError:
+            if not self.has_representation_for(model, mediatype):
                 exclude.append(mediatype)
             else:
-                try:
-                    return types[model]
-                except KeyError:
-                    exclude.append(mediatype)
+                return self.get_representation(model, mediatype)
 
         for mediatype in exclude:
-            types = self._representations[mediatype]
-
-            try:
-                return types[None]
-            except KeyError:
-                pass
+            if self.has_representation_for(None, mediatype):
+                return self.get_representation(None, mediatype)
 
         raise NoRepresentationFound(
             '%s has no registered representation handler for `%s`' % (
@@ -274,7 +248,18 @@ class Resource(object):
         result = []
         for models in self._representations.values():
             result += models.values()
-        return result
+        return result + self._api.representations
+
+    def has_representation_for(self, model, media_type):
+        return (media_type in self._representations
+                and model in self._representations[media_type]) or (
+                        self._api.has_representation_for(model, media_type))
+
+    def get_representation(self, model, media_type):
+        try:
+            return self._representations[media_type][model]
+        except KeyError:
+            return self._api.get_representation(model, media_type)
 
     def model(self, view_name=None):
         """

@@ -43,7 +43,7 @@ class Representation(object):
             items = map(
                 lambda x: self._transform_func(x, context), obj.iterable)
             data = {
-                    obj.key: items,
+                    obj.key: list(items),
                     obj.totalcount_key: len(obj.iterable),
                     }
         else:
@@ -72,16 +72,16 @@ class Validator(object):
         return self._validator_func(self.serializer.loads(context), context)
 
 
-class RestosaurException(dict):
+class RestosaurExceptionDict(dict):
     def __init__(self, ex, tb=None):
-        super(RestosaurException, self).__init__()
+        super(RestosaurExceptionDict, self).__init__()
         self.exc_type = type(ex)
         self.exc_value = ex
         self.tb = tb
         self.status_code = 500
 
 
-def restosaur_exception_as_text(obj, ctx):
+def restosaur_exception_dict_as_text(obj, ctx):
     output = u'\n'.join(
             traceback.format_exception(obj.exc_type, obj.exc_value, obj.tb))
 

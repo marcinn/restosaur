@@ -4,7 +4,8 @@ import six
 
 from .representations import (
         RepresentationAlreadyRegistered, UnknownRepresentation,
-        Representation)
+        Representation, RestosaurExceptionDict,
+        restosaur_exception_dict_as_text)
 from .resource import Resource
 from .utils import autodiscover, join_content_type_with_vnd
 from .loading import load_resource
@@ -19,7 +20,7 @@ class ModelViewNotRegistered(Exception):
     pass
 
 
-class API(object):
+class BaseAPI(object):
     def __init__(
             self, path=None, middlewares=None,
             context_class=None, default_charset=None, debug=False):
@@ -49,14 +50,15 @@ class API(object):
         return obj
 
     def add_representation(
-            self, type_, content_type, vnd=None,
+            self, type_, content_type, vnd=None, qvalue=None,
             serializer=None, _transform_func=None):
 
         representation = Representation(
             content_type=content_type, vnd=vnd,
-            serializer=serializer, _transform_func=_transform_func)
+            serializer=serializer, _transform_func=_transform_func,
+            qvalue=qvalue)
 
-        self.register_representation(representation)
+        self.register_representation(type_, representation)
 
     def register_representation(self, type_, representation):
 
@@ -64,19 +66,30 @@ class API(object):
         vnd = representation.vnd
         repr_key = join_content_type_with_vnd(content_type, vnd)
 
-        if repr_key in self._representations[type_]:
+        if (repr_key in self._representations and
+                type_ in self._representations[repr_key]):
             raise RepresentationAlreadyRegistered(
-                            '%s: %s' % (type_, repr_key))
+                            '%s for %s' % (repr_key, type_))
 
-        self._representations[type_][repr_key] = representation
+        self._representations[repr_key][type_] = representation
 
-    def get_representation(self, type_, content_type, vnd=None):
-        repr_key = join_content_type_with_vnd(content_type, vnd)
+    def get_representation(self, model, media_type):
         try:
-            return self._representations[type_][repr_key]
+            return self._representations[media_type][model]
         except KeyError:
-            raise UnknownRepresentation('%s: %s' % (
-                            type_, repr_key))
+            raise UnknownRepresentation('%s for %s' % (
+                        media_type, model))
+
+    def has_representation_for(self, model, media_type):
+        return (media_type in self._representations
+                and model in self._representations[media_type])
+
+    @property
+    def representations(self):
+        result = []
+        for models in self._representations.values():
+            result += models.values()
+        return result
 
     def resource_for_viewmodel(self, model, view_name=None):
         try:
@@ -132,3 +145,39 @@ class API(object):
         Shortcut for `restosaur.autodiscover()`
         """
         autodiscover(*args, **kw)
+
+
+class API(BaseAPI):
+    def __init__(self, *args, **kw):
+        super(API, self).__init__(*args, **kw)
+
+        # backward compatibility
+        configure_plain_text_api(self)
+        configure_json_api(self)
+
+
+JSON = API
+
+
+def configure_json_api(api):
+    api.add_representation(
+            RestosaurExceptionDict, content_type='application/json')
+    api.add_representation(
+            dict, content_type='application/json')
+
+
+def configure_plain_text_api(api):
+    api.add_representation(
+            RestosaurExceptionDict, content_type='text/plain',
+            _transform_func=restosaur_exception_dict_as_text,
+            qvalue=0.1)
+
+
+def api_factory(path=None, api_class=API, **kwargs):
+    api = api_class(path, **kwargs)
+    return api
+
+
+def json_api_factory(path=None, api_class=API, **kwargs):
+    api = api_factory(path=path, api_class=api_class, **kwargs)
+    return api
