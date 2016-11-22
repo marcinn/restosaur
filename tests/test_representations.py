@@ -61,7 +61,7 @@ class ErrorsContentNegotiationTestCase(BaseTestCase):
         resp = self.call(
                 self.detail, 'post', content_type='test/error500',
                 HTTP_ACCEPT='text/plain')
-        self.assertEqual(resp.content, b'RuntimeError: a runtime error\n')
+        self.assertIn(b'RuntimeError: a runtime error', resp.content)
 
     def test_returning_json_error_message(self):
         resp = self.call(

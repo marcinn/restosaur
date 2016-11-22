@@ -5,6 +5,7 @@
 /dist
 /.env
 /.env3
+/.env34
 /build
 /.eggs
 /.coverage
