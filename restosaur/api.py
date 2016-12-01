@@ -165,6 +165,12 @@ def configure_json_api(api):
     api.add_representation(
             dict, content_type='application/json')
 
+    # backward compatibility
+
+    from .utils import Collection
+    api.add_representation(
+            Collection, content_type='application/json')
+
 
 def configure_plain_text_api(api):
     api.add_representation(
