@@ -40,9 +40,7 @@ def build_context(api, resource, request):
             content_type=content_type, content_length=content_length)
 
 
-def resource_dispatcher_factory(api, resource):
-    from django.http import HttpResponse
-
+def resource_dispatcher_factory(api, resource, response_class):
     def dispatch_request(request, *args, **kw):
         ctx = build_context(api, resource, request)
         bypass_resource_call = False
@@ -63,7 +61,7 @@ def resource_dispatcher_factory(api, resource):
         if not bypass_resource_call:
             response = resource(ctx, *args, **kw)
         else:
-            response = HttpResponse()
+            response = response_class()
 
         middlewares_called.reverse()
 

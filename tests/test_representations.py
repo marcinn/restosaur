@@ -35,8 +35,10 @@ class BaseTestCase(unittest.TestCase):
         self.rqfactory = RequestFactory()
 
     def call(self, resource, method, *args, **kw):
+        from django.http import HttpResponse
         rq = getattr(self.rqfactory, method)(resource.path, *args, **kw)
-        return resource_dispatcher_factory(self.api, resource)(rq)
+        return resource_dispatcher_factory(
+                self.api, resource, HttpResponse)(rq)
 
 
 class ContentNegotiationTestCase(BaseTestCase):

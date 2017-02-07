@@ -15,8 +15,9 @@ class APITestCase(unittest.TestCase):
         self.rqfactory = RequestFactory()
 
     def call(self, api, resource, method, *args, **kw):
+        from django.http import HttpResponse
         rq = getattr(self.rqfactory, method)(resource.path, *args, **kw)
-        return resource_dispatcher_factory(api, resource)(rq)
+        return resource_dispatcher_factory(api, resource, HttpResponse)(rq)
 
 
 class APIPathsTestCase(APITestCase):
