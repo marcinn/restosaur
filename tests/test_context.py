@@ -6,7 +6,7 @@ import six
 import unittest
 
 from restosaur import API, responses
-from restosaur.dispatch import build_context
+from restosaur.contrib.django.dispatch import build_context
 
 
 class ContextTestCase(unittest.TestCase):

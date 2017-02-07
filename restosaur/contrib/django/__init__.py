@@ -46,8 +46,7 @@ class API(BaseAPI):
                 return list(urls)
 
         from django.views.decorators.csrf import csrf_exempt
-        from django.http import HttpResponse
-        from ...dispatch import resource_dispatcher_factory
+        from .dispatch import resource_dispatcher_factory
         from ... import urltemplate
 
         urls = []
@@ -63,8 +62,7 @@ class API(BaseAPI):
 
             urls.append(url(
                 '^%s$' % path, csrf_exempt(
-                    resource_dispatcher_factory(
-                        self, resource, response_class=HttpResponse))))
+                    resource_dispatcher_factory(self, resource))))
 
         return [url('^%s' % self.path, include(patterns('', *urls)))]
 

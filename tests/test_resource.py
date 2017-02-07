@@ -2,7 +2,7 @@ import unittest
 import json
 
 from restosaur import API
-from restosaur.dispatch import resource_dispatcher_factory
+from restosaur.contrib.django.dispatch import resource_dispatcher_factory
 
 from django.test import SimpleTestCase
 from .utils import response_content_as_text
@@ -18,10 +18,8 @@ class ResourceTestCase(unittest.TestCase):
         self.rqfactory = RequestFactory()
 
     def call(self, resource, method, *args, **kw):
-        from django.http import HttpResponse
         rq = getattr(self.rqfactory, method)(resource.path, *args, **kw)
-        return resource_dispatcher_factory(
-                self.api, resource, HttpResponse)(rq)
+        return resource_dispatcher_factory(self.api, resource)(rq)
 
 
 class DefaultRepresentationTestCase(ResourceTestCase):

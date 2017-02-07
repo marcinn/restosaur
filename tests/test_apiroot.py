@@ -3,7 +3,7 @@ import json
 
 from restosaur import API
 from restosaur.contrib.apiroot import ApiRoot
-from restosaur.dispatch import resource_dispatcher_factory
+from restosaur.contrib.django.dispatch import resource_dispatcher_factory
 from .utils import response_content_as_text
 
 
@@ -21,10 +21,8 @@ class APIRootTestCase(unittest.TestCase):
         self.rqfactory = RequestFactory()
 
     def call(self, resource, method, *args, **kw):
-        from django.http import HttpResponse
         rq = getattr(self.rqfactory, method)(resource.path, *args, **kw)
-        return resource_dispatcher_factory(
-                self.api, resource, HttpResponse)(rq)
+        return resource_dispatcher_factory(self.api, resource)(rq)
 
 
 class RootPageTestCase(APIRootTestCase):
@@ -112,10 +110,8 @@ class ApiRootRootResourceRegistrationTestCase(unittest.TestCase):
         self.rqfactory = RequestFactory()
 
     def call(self, resource, method, *args, **kw):
-        from django.http import HttpResponse
         rq = getattr(self.rqfactory, method)(resource.path, *args, **kw)
-        return resource_dispatcher_factory(
-                self.api, resource, HttpResponse)(rq)
+        return resource_dispatcher_factory(self.api, resource)(rq)
 
     def test_successful_registration_as_a_GET_method(self):
         ApiRoot(self.root_resource)

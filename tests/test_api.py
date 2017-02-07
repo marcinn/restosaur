@@ -3,7 +3,7 @@ import unittest
 
 from restosaur import API
 from restosaur.contrib.django import API as DjangoAPI
-from restosaur.dispatch import resource_dispatcher_factory
+from restosaur.contrib.django.dispatch import resource_dispatcher_factory
 from .utils import response_content_as_text
 
 
@@ -15,9 +15,8 @@ class APITestCase(unittest.TestCase):
         self.rqfactory = RequestFactory()
 
     def call(self, api, resource, method, *args, **kw):
-        from django.http import HttpResponse
         rq = getattr(self.rqfactory, method)(resource.path, *args, **kw)
-        return resource_dispatcher_factory(api, resource, HttpResponse)(rq)
+        return resource_dispatcher_factory(api, resource)(rq)
 
 
 class APIPathsTestCase(APITestCase):
