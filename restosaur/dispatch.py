@@ -1,5 +1,4 @@
-def resource_dispatcher_factory(
-        api, resource, response_class, context_builder):
+def resource_dispatcher_factory(api, resource, response_builder, context_builder):
     def dispatch_request(request, *args, **kw):
         ctx = context_builder(api, resource, request)
         bypass_resource_call = False
@@ -18,9 +17,9 @@ def resource_dispatcher_factory(
                     break
 
         if not bypass_resource_call:
-            response = resource(ctx, *args, **kw)
+            response, content, ct = resource(ctx, *args, **kw)
         else:
-            response = response_class()
+            response, content, ct = None, None, None
 
         middlewares_called.reverse()
 
@@ -33,5 +32,5 @@ def resource_dispatcher_factory(
                 if method(request, response, ctx) is False:
                     break
 
-        return response
+        return response_builder(response, content, ct)
     return dispatch_request

@@ -209,27 +209,7 @@ class Resource(object):
                 content_type = _join_ct_vnd(
                        representation.content_type, representation.vnd)
 
-        return self._do_http_response(response, content, content_type)
-
-    def _do_http_response(self, response, content, content_type):
-        """
-        RESTResponse -> HTTPResponse factory
-        """
-
-        from django.http import HttpResponse
-
-        if isinstance(response, HttpResponse):
-            return response
-
-        httpresp = HttpResponse(content, status=response.status)
-
-        if content_type:
-            httpresp['Content-Type'] = content_type
-
-        for header, value in response.headers.items():
-            httpresp[header] = value
-
-        return httpresp
+        return (response, content, content_type)
 
     @property
     def name(self):

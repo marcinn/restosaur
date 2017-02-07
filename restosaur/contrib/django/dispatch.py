@@ -43,6 +43,32 @@ def build_context(api, resource, request):
             content_type=content_type, content_length=content_length)
 
 
+def _do_http_response(response, content, content_type):
+    """
+    RESTResponse -> HTTPResponse factory
+    """
+
+    if isinstance(response, HttpResponse):
+        return response
+
+    httpresp = HttpResponse(content, status=response.status)
+
+    if content_type:
+        httpresp['Content-Type'] = content_type
+
+    for header, value in response.headers.items():
+        httpresp[header] = value
+
+    return httpresp
+
+
+def response_builder(response, content, content_type):
+    if response is None:
+        return HttpResponse()
+    else:
+        return _do_http_response(response, content, content_type)
+
+
 def resource_dispatcher_factory(api, resource):
     return restosaur_dispatch.resource_dispatcher_factory(
-            api, resource, HttpResponse, build_context)
+                    api, resource, response_builder, build_context)
