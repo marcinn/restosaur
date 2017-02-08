@@ -43,10 +43,10 @@ class MultiValueDict(collections.MutableMapping):
             return
         else:
             try:
-                data = data.items()
+                data = list(data.items())
             except AttributeError:
                 pass
-        keys = set([x[0] for x in data])
+        keys = list(set([x[0] for x in data]))
         for key in keys:
             self._data[key] = []
         for key, value in data:

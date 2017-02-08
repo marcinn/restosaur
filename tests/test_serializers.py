@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 from restosaur import API
 from restosaur.contrib.django.dispatch import resource_dispatcher_factory
+from .utils import response_content_as_text
 
 import unittest
 import json
@@ -24,7 +25,8 @@ class MultiPartFormSerializerTestCase(unittest.TestCase):
 
         @self.view.representation(media='application/json')
         def view_repr(obj, ctx):
-            return dict(obj.items())
+            data = dict(obj.items())
+            return data
 
     def call(self, resource, method, *args, **kw):
         rq = getattr(self.rqfactory, method)(resource.path, *args, **kw)
@@ -35,5 +37,5 @@ class MultiPartFormSerializerTestCase(unittest.TestCase):
                 self.view, 'post', data={'foo': 'bar'},
                 HTTP_ACCEPT='application/json')
         self.assertEqual(resp.status_code, 200)
-        data = json.loads(resp.content)
+        data = json.loads(response_content_as_text(resp))
         self.assertEqual(data['foo'], 'bar')
