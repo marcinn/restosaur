@@ -11,7 +11,6 @@ from . import responses  # NOQA
 from . import filters  # NOQA
 
 from .api import API  # NOQA
-from .utils import autodiscover  # NOQA
 
 
 default_app_config = 'restosaur.apps.RestosaurAppConfig'

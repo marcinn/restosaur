@@ -7,7 +7,7 @@ from .representations import (
         Representation, RestosaurExceptionDict,
         restosaur_exception_dict_as_text)
 from .resource import Resource
-from .utils import autodiscover, join_content_type_with_vnd
+from .utils import join_content_type_with_vnd
 from .loading import load_resource
 from .context import Context
 
@@ -139,12 +139,6 @@ class BaseAPI(object):
                 model_class, resource=resource, view_name=view_name)
             return model_class
         return register_view_for_model
-
-    def autodiscover(self, *args, **kw):
-        """
-        Shortcut for `restosaur.autodiscover()`
-        """
-        autodiscover(*args, **kw)
 
 
 class API(BaseAPI):

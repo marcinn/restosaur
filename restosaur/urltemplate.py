@@ -29,7 +29,3 @@ def remove_parameters(urltemplate):
     for needle, key in params_to_replace:
         uri = uri.replace(needle, '')
     return uri
-
-
-def to_django_urlpattern(path):
-    return RE_PARAMS.sub('/(?P<\\2>[^/]+)', path)

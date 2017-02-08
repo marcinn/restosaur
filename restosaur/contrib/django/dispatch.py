@@ -1,8 +1,9 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 
 from restosaur.context import QueryDict
 from restosaur.headers import normalize_header_name
 from restosaur import dispatch as restosaur_dispatch
+from restosaur.exceptions import Http404 as RestosaurHttp404
 
 
 def build_context(api, resource, request):
@@ -69,6 +70,16 @@ def response_builder(response, content, content_type):
         return _do_http_response(response, content, content_type)
 
 
+class DjangoMethodDispatcher(restosaur_dispatch.DefaultResourceDispatcher):
+    def do_call(self, callback, ctx, args=None, kwargs=None):
+        try:
+            return super(DjangoMethodDispatcher, self).do_call(
+                    callback, ctx, args=args, kwargs=kwargs)
+        except Http404 as ex:
+            raise RestosaurHttp404(ex)
+
+
 def resource_dispatcher_factory(api, resource):
     return restosaur_dispatch.resource_dispatcher_factory(
-                    api, resource, response_builder, build_context)
+                    api, resource, response_builder, build_context,
+                    dispatcher_class=DjangoMethodDispatcher)

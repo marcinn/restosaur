@@ -2,7 +2,7 @@ import six
 import times
 import warnings
 
-from django.utils.http import http_date
+from email.utils import formatdate
 
 from .representations import RestosaurExceptionDict
 from .utils import Collection
@@ -13,6 +13,10 @@ NOTSET = 'NOTSET'
 
 def dummy_converter(x, context):
     return x
+
+
+def http_date(x):
+    return formatdate(x, usegmt=True)
 
 
 class StatusCodeMismatch(ValueError):

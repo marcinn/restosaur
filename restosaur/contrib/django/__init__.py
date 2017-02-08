@@ -4,8 +4,14 @@ from django.conf import settings
 from django.utils.encoding import force_text
 from django.views import debug
 
+from .utils import autodiscover
 from ...api import API as BaseAPI
 from ...representations import RestosaurExceptionDict
+from ...urltemplate import RE_PARAMS
+
+
+def to_django_urlpattern(path):
+    return RE_PARAMS.sub('/(?P<\\2>[^/]+)', path)
 
 
 def django_html_exception(obj, ctx):
@@ -47,12 +53,11 @@ class API(BaseAPI):
 
         from django.views.decorators.csrf import csrf_exempt
         from .dispatch import resource_dispatcher_factory
-        from ... import urltemplate
 
         urls = []
 
         for resource in self.resources:
-            path = urltemplate.to_django_urlpattern(resource._path)
+            path = to_django_urlpattern(resource._path)
 
             if path.startswith('/'):
                 path = path[1:]
@@ -73,3 +78,9 @@ class API(BaseAPI):
             return self.get_urls()
         else:
             return patterns('', (r'^', include(self.get_urls())))
+
+    def autodiscover(self, *args, **kw):
+        """
+        Shortcut for `restosaur.autodiscover()`
+        """
+        autodiscover(*args, **kw)

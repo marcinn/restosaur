@@ -1,11 +1,9 @@
 import functools
 import logging
-import sys
 import urllib
 
 from collections import OrderedDict, defaultdict
 
-from .exceptions import Http404
 from .representations import (
         RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
         Representation, Validator)
@@ -251,104 +249,6 @@ class Resource(object):
                     model=model_class, resource=self, view_name=view_name)
             return model_class
         return register_model
-
-    def __call__(self, ctx, *args, **kw):
-        from django.http import Http404 as DjangoHttp404
-
-        method = ctx.method
-        request = ctx.request
-
-        # support for X-HTTP-METHOD-OVERRIDE
-
-        method = ctx.headers.get('x-http-method-override') or method
-
-        # Check request method and raise MethodNotAllowed if unsupported
-
-        allowed_methods = self.get_allowed_methods()
-
-        if method not in allowed_methods:
-            headers = {
-                    'Allow': ', '.join(allowed_methods),
-                }
-            return self._http_response(ctx.MethodNotAllowed({
-                'error': 'Method `%s` is not registered for resource `%s`' % (
-                    method, self._path)}, headers=headers))
-
-        # Negotiate payload content type and store the best matching
-        # result in ctx.request_content_type
-
-        if ctx.content_type and ctx.content_length:
-            media_types = self.get_method_supported_mediatypes(method)
-            if media_types:
-                ctx.request_content_type = contentnegotiation.best_match(
-                        media_types, ctx.content_type)
-            else:
-                # server does not support any representation
-                ctx.request_content_type = None
-        elif ctx.content_length:
-            # No payload content-type was provided.
-            # According to RFC7231 (Section 3.1.1.5) server may assume
-            # "application/octet-stream" or try to examine the type.
-
-            ctx.request_content_type = 'application/octet-stream'
-        else:
-            # No payload
-            ctx.request_content_type = None
-
-        # match response representation, serializer and content type
-
-        if ctx.content_length and ctx.content_type:
-            if ctx.request_content_type:
-                if request.body:
-                    try:
-                        ctx.validator = self._validators[
-                                    ctx.request_content_type]
-                    except KeyError:
-                        pass
-                    else:
-                        try:
-                            ctx.body = ctx.validator.parse(ctx)
-                        except serializers.DeserializationError as ex:
-                            resp = responses.exception_response_factory(
-                                    ctx, ex, cls=responses.BadRequestResponse)
-                            return self._http_response(resp)
-            elif not ctx.content_length:
-                ctx.body = None
-            else:
-                return self._http_response(ctx.UnsupportedMediaType())
-
-        log.debug('Calling %s, %s, %s' % (method, args, kw))
-
-        try:
-            callback = self.get_callback(method, ctx.request_content_type)
-
-            try:
-                resp = callback(ctx, *args, **kw)
-            except DjangoHttp404:
-                raise Http404
-            else:
-                if not resp:
-                    raise TypeError(
-                            'Function `%s` does not return '
-                            'a response object' % callback)
-                return self._http_response(resp)
-        except Http404:
-            return self._http_response(ctx.NotFound())
-        except Exception as ex:
-            if self._api.debug:
-                tb = sys.exc_info()[2]
-            else:
-                tb = None
-            resp = responses.exception_response_factory(ctx, ex, tb)
-            log.exception(
-                    'Internal Server Error: %s', ctx.request.path,
-                    exc_info=sys.exc_info(),
-                    extra={
-                        'status_code': resp.status,
-                        'context': ctx,
-                    }
-            )
-            return self._http_response(resp)
 
     def accept(self, media_type=None):
         media_type = media_type or self._default_content_type

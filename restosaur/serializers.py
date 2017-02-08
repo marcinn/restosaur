@@ -3,6 +3,8 @@ import datetime
 import decimal
 import six
 
+from .datastructures import MultiValueDict
+
 
 __all__ = [
         'JsonSerializer', 'MultiPartFormDataSerializer',
@@ -74,7 +76,6 @@ class JsonSerializer(object):
 
 class MultiPartFormDataSerializer(object):
     def loads(self, ctx):
-        from django.utils.datastructures import MultiValueDict
         data = MultiValueDict()
         data.update(ctx.data)
         data.update(ctx.files)
