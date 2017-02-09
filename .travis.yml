@@ -16,7 +16,7 @@ install:
   - pip install -q Django==$DJANGO_VERSION
   - pip install coveralls
 script:
-  - nosetests --with-coverage --cover-erase --cover-package=restosaur
+  - nosetests --with-coverage --cover-erase --cover-package=restosaur tests/
 after_success:
   - coveralls
 
