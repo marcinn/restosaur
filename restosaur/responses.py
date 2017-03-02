@@ -1,11 +1,10 @@
-import six
 import times
 import warnings
 
 from email.utils import formatdate
 
 from .representations import RestosaurExceptionDict
-from .utils import Collection
+from .utils import Collection, force_text
 
 
 NOTSET = 'NOTSET'
@@ -279,7 +278,7 @@ def exception_response_factory(context, ex, tb=None, extra=None, cls=None):
     data = RestosaurExceptionDict(ex, tb=tb)
     data.update(extra or {})
     data.update({
-        'error': six.text_type(ex),
+        'error': force_text(ex),
         })
 
     if tb:

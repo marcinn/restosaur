@@ -17,21 +17,8 @@ except ImportError:
 
 
 from .loading import load_resource
+from .utils import force_bytes
 from . import responses
-
-
-def force_bytes(s, encoding='utf-8', errors='strict'):
-    if isinstance(s, bytes):
-        if encoding == 'utf-8':
-            return s
-        else:
-            return s.decode('utf-8', errors).encode(encoding, errors)
-    if isinstance(s, memoryview):
-        return bytes(s)
-    try:
-        return s.encode(encoding, errors)
-    except AttributeError:
-        return str(s).encode(encoding, errors)
 
 
 def parse_http_date(header, headers):

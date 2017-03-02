@@ -1,3 +1,4 @@
+import six
 from . import contentnegotiation
 
 
@@ -43,3 +44,46 @@ def split_mediatype(mt):
 
 def generic_mediatype(mt):
     return split_mediatype(mt)[0]
+
+
+def force_bytes(s, encoding='utf-8', errors='strict'):
+    if isinstance(s, bytes):
+        if encoding == 'utf-8':
+            return s
+        else:
+            return s.decode('utf-8', errors).encode(encoding, errors)
+    if isinstance(s, memoryview):
+        return bytes(s)
+    try:
+        return s.encode(encoding, errors)
+    except AttributeError:
+        return str(s).encode(encoding, errors)
+
+
+def force_text(s, encoding='utf-8', errors='strict'):
+    if issubclass(type(s), six.text_type):
+        return s
+    try:
+        if not issubclass(type(s), six.string_types):
+            if six.PY3:
+                if isinstance(s, bytes):
+                    s = six.text_type(s, encoding, errors)
+                else:
+                    s = six.text_type(s)
+            elif hasattr(s, '__unicode__'):
+                s = six.text_type(s)
+            else:
+                s = six.text_type(bytes(s), encoding, errors)
+        else:
+            s = s.decode(encoding, errors)
+    except UnicodeDecodeError as e:
+        if not isinstance(s, Exception):
+            raise
+        else:
+            # If we get to here, the caller has passed in an Exception
+            # subclass populated with non-ASCII bytestring data without a
+            # working unicode method. Try to handle this without raising a
+            # further exception by individually forcing the exception args
+            # to unicode.
+            s = ' '.join(force_text(arg, encoding, errors) for arg in s)
+    return s
