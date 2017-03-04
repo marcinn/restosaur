@@ -4,11 +4,12 @@ import urllib
 
 from collections import OrderedDict, defaultdict
 
-from .representations import (
+from .representations import (  # NOQA
         RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
-        Representation, Validator)
+        Representation, Validator, UnknownRepresentation,
+        match_representation, NoRepresentationFound, NoMoreMediaTypes)
 from .utils import join_content_type_with_vnd, split_mediatype
-from . import contentnegotiation, responses, urltemplate, serializers
+from . import responses, urltemplate, serializers
 
 
 log = logging.getLogger(__name__)
@@ -31,14 +32,6 @@ def dict_as_text(obj, ctx, depth=0):
 
 def resource_name_from_path(path):
     return urltemplate.remove_parameters(path).strip('/')
-
-
-class NoMoreMediaTypes(Exception):
-    pass
-
-
-class NoRepresentationFound(Exception):
-    pass
 
 
 class Resource(object):
@@ -105,55 +98,8 @@ class Resource(object):
             return view
         return wrapper
 
-    def _match_media_type(self, accept, representations, exclude=None):
-        exclude = exclude or []
-
-        def _drop_mt_args(x):
-            return x.split(';')[0]
-
-        mediatypes = list(filter(
-                lambda x: _drop_mt_args(x) not in exclude, map(
-                    lambda x: x.media_type(), representations)))
-
-        if not mediatypes:
-            raise NoMoreMediaTypes
-
-        mediatype = contentnegotiation.best_match(mediatypes, accept)
-
-        if not mediatype:
-            raise NoMoreMediaTypes
-
-        return _drop_mt_args(mediatype)
-
     def _match_representation(self, instance, ctx, accept=None):
-
-        # Use "*/*" as default -- RFC 7231 (Section 5.3.2)
-        accept = accept or ctx.headers.get('accept') or '*/*'
-
-        exclude = []
-        model = type(instance)
-
-        representations = self.representations
-
-        while True:
-            try:
-                mediatype = self._match_media_type(
-                        accept, representations, exclude=exclude)
-            except NoMoreMediaTypes:
-                break
-
-            if not self.has_representation_for(model, mediatype):
-                exclude.append(mediatype)
-            else:
-                return self.get_representation(model, mediatype)
-
-        for mediatype in exclude:
-            if self.has_representation_for(None, mediatype):
-                return self.get_representation(None, mediatype)
-
-        raise NoRepresentationFound(
-            '%s has no registered representation handler for `%s`' % (
-                model, accept))
+        return match_representation(self, ctx, instance, accept=accept)
 
     def _http_response(self, response):
         content = ''

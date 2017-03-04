@@ -1,7 +1,7 @@
 import traceback
 
 from .utils import Collection, join_content_type_with_vnd
-from . import serializers
+from . import serializers, contentnegotiation
 
 
 class RepresentationAlreadyRegistered(Exception):
@@ -13,6 +13,14 @@ class UnknownRepresentation(Exception):
 
 
 class ValidatorAlreadyRegistered(Exception):
+    pass
+
+
+class NoMoreMediaTypes(Exception):
+    pass
+
+
+class NoRepresentationFound(Exception):
     pass
 
 
@@ -86,3 +94,59 @@ def restosaur_exception_dict_as_text(obj, ctx):
             traceback.format_exception(obj.exc_type, obj.exc_value, obj.tb))
 
     return output
+
+
+def match_representation(resource, ctx, instance, accept=None):
+    """
+    Match representation `resource` (or resource-like) representation
+    of `instance`, based on `ctx`. Representations matching may be
+    narrowed by `accept` media type.
+    """
+
+    # Use "*/*" as default -- RFC 7231 (Section 5.3.2)
+    accept = accept or ctx.headers.get('accept') or '*/*'
+
+    exclude = []
+    representations = resource.representations
+    model = type(instance)
+
+    while True:
+        try:
+            mediatype = _match_media_type(
+                    accept, representations, exclude=exclude)
+        except NoMoreMediaTypes:
+            break
+
+        if not resource.has_representation_for(model, mediatype):
+            exclude.append(mediatype)
+        else:
+            return resource.get_representation(model, mediatype)
+
+    for mediatype in exclude:
+        if resource.has_representation_for(None, mediatype):
+            return resource.get_representation(None, mediatype)
+
+    raise NoRepresentationFound(
+        '%s has no registered representation handler for `%s`' % (
+            model, accept))
+
+
+def _match_media_type(accept, representations, exclude=None):
+    exclude = exclude or []
+
+    def _drop_mt_args(x):
+        return x.split(';')[0]
+
+    mediatypes = list(filter(
+            lambda x: _drop_mt_args(x) not in exclude, map(
+                lambda x: x.media_type(), representations)))
+
+    if not mediatypes:
+        raise NoMoreMediaTypes
+
+    mediatype = contentnegotiation.best_match(mediatypes, accept)
+
+    if not mediatype:
+        raise NoMoreMediaTypes
+
+    return _drop_mt_args(mediatype)
