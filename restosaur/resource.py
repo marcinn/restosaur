@@ -264,7 +264,7 @@ class Resource(object):
         self._validators[content_type] = obj
         return obj
 
-    def uri(self, context, params=None, query=None):
+    def uri(self, context, params=None, query=None, append_query=False):
         assert params is None or isinstance(
                 params, dict), "entity.uri() params should be passed as dict"
 
@@ -273,7 +273,14 @@ class Resource(object):
         uri = context.build_absolute_uri(self._path)
         uri = urltemplate.to_url(uri, params)
 
-        if query:
-            uri += '?'+urllib.urlencode(query)
+        final_query = {}
+
+        if append_query:
+            final_query.update(context.parameters)
+
+        final_query.update(query or {})
+
+        if final_query:
+            uri += '?'+urllib.urlencode(final_query)
 
         return uri

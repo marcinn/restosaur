@@ -17,6 +17,7 @@ except ImportError:
 
 
 from .loading import load_resource
+from .representations import match_representation
 from .utils import force_bytes
 from . import responses
 
@@ -95,6 +96,16 @@ class Context(object):
             return '%s?%s' % (uri, urlencode(params))
         else:
             return uri
+
+    def match_representation(self, model):
+        return match_representation(self.resource, self, model)
+
+    def transform_representation(self, model):
+        representation = self.match_representation(model)
+        return representation._transform_func(model, self)
+
+    def self_url(self, query=None, append_query=False):
+        return self.resource.uri(self, query=query, append_query=append_query)
 
     def url_for(self, resource, **kwargs):
         """
