@@ -14,9 +14,8 @@ class APIRootTestCase(unittest.TestCase):
         from django.test import RequestFactory
 
         self.api = API('foo')
-        self.apiroot = ApiRoot()
         self.root = self.api.resource('/')
-        self.root.get()(self.apiroot.as_view())  # register root view
+        self.apiroot = ApiRoot(self.root)
 
         self.rqfactory = RequestFactory()
 
