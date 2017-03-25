@@ -104,48 +104,66 @@ class Context(object):
         representation = self.match_representation(model)
         return representation._transform_func(model, self)
 
+    def url(
+            self, model=None, resource=None, name=None,
+            parameters=None, query=None):
+        """
+        Create URL for model named link or resource
+        with optional query parameters
+        """
+
+        if model and resource:
+            raise ValueError('Provide `model` or `resource`. Both set.')
+
+        if model:
+            return self.model_url(
+                    model, name=name, parameters=parameters, query=query)
+
+        if name:
+            raise ValueError("Named link must be used with model")
+
+        if not resource:
+            raise ValueError("Resource or model must is required")
+
+        return self.resource_url(
+                resource, parameters=parameters, query=query)
+
     def self_url(self, query=None, append_query=False):
+        """
+        Create URL pointing to self with optional query parameters.
+
+        If `append_query` is True, the current query string parameters
+        will be added.
+        """
+
         return self.resource.uri(self, query=query, append_query=append_query)
 
     def url_for(self, resource, **kwargs):
         """
-        Shortcut wrapper of `resource.uri()`
+        Deprecated resource URL generator
         """
+        return self.resource_url(resource, parameters=kwargs)
+
+    def model_url(self, model, name=None, query=None, parameters=None):
+        """
+        Generate URL for model's named link with optional query parameters.
+        Model instance or class is accepted.
+
+        For classes you may use `parameters` argument to provide values
+        for path template.
+        """
+        return self.api.linked_url(
+                self, model, name=name, parameters=parameters, query=query)
+
+    def resource_url(self, resource, parameters=None, query=None):
+        """
+        Generate URL for the resource using path parameters
+        and optional query string parameters.
+        """
+
         if isinstance(resource, six.string_types):
             resource = load_resource(resource)
-        return resource.uri(self, params=kwargs)
-
-    def link_model(self, model_instance, view_name=None, query=None):
-        resource = self.api.resource_for_viewmodel(
-                type(model_instance), view_name)
-        return self.link(
-                resource, model=model_instance, query=query)
-
-    def link(self, resource, model=None, query=None):
-        """
-        Generate URL for `model` instance based on `resource`
-        path template.
-
-        Handy shortcut for `resource.uri()`
-        """
-
-        if not resource._required_parameters or not model:
-            return resource.uri(self, query=query)
-
-        params = {}
-
-        for parameter in resource._required_parameters:
-            try:
-                params[parameter] = getattr(model, parameter)
-            except AttributeError:
-                try:
-                    params[parameter] = model[parameter]
-                except (KeyError, TypeError, ValueError):
-                    raise ValueError(
-                        'Can\'t construct URL parameter "%s" from `%s`' % (
-                            parameter, model))
-
-        return resource.uri(self, params=params, query=query)
+        return resource.uri(self, params=parameters, query=query)
 
     def is_modified_since(self, dt):
         """

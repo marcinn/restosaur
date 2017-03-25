@@ -1,15 +1,13 @@
 from collections import defaultdict
 
-import six
-
 from .representations import (
         RepresentationAlreadyRegistered, UnknownRepresentation,
         Representation, RestosaurExceptionDict,
         restosaur_exception_dict_as_text)
 from .resource import Resource
 from .utils import join_content_type_with_vnd
-from .loading import load_resource
 from .context import Context
+from .linking import ModelLinksRegistry
 
 
 class ModelViewAlreadyRegistered(Exception):
@@ -35,8 +33,8 @@ class BaseAPI(object):
         self.default_charset = default_charset or 'utf-8'
         self.middlewares = middlewares or []
         self._representations = defaultdict(dict)  # type->repr_key
-        self._model_views = defaultdict(dict)
         self.context_class = context_class or Context
+        self.model_links = ModelLinksRegistry()
 
     def make_context(self, **kwargs):
         return self.context_class(self, **kwargs)
@@ -91,54 +89,35 @@ class BaseAPI(object):
             result += models.values()
         return result
 
-    def resource_for_viewmodel(self, model, view_name=None):
-        try:
-            model_meta = self._model_views[model]
-        except KeyError:
-            raise ModelViewNotRegistered(
-                    'No views are registered for %s' % model)
-
-        try:
-            resource = model_meta[view_name]
-        except KeyError:
-            if not view_name:
-                raise ModelViewNotRegistered(
-                    'No default view registered for %s' % model)
-            else:
-                raise ModelViewNotRegistered(
-                    'View `%s` is not registered for %s' % (view_name, model))
-        else:
-            if isinstance(resource, six.string_types):
-                resource = load_resource(resource)
-                model_meta[view_name] = resource
-            return resource
-
-    def register_view(self, model, resource, view_name=None):
-        if view_name in self._model_views[model]:
-            if view_name:
-                raise ModelViewAlreadyRegistered(
-                    '%s is already registered as a "%s" view' % (
-                        model, view_name))
-            else:
-                raise ModelViewAlreadyRegistered(
-                    '%s is already registered as a default view' % model)
-
-        self._model_views[model][view_name] = resource
-
-    def view(self, resource, view_name=None):
+    def linked_resource(self, model, name=None):
         """
-        A shortcut decorator for registering a `model_class`
-        as as a `view_name` view of a `resource`.
+        Return linked resource for model instance or class.
+        """
+        return self.model_links.linked_resource(model=model, name=name)
+
+    def linked_url(
+            self, context, instance_or_class, name=None,
+            parameters=None, query=None):
+        return self.model_links.url(
+                context, instance_or_class, name=name,
+                parameters=parameters, query=query)
+
+    def link(self, model, resource, name=None):
+        self.model_links.link(
+                model=model, resource=resource, name=name)
+
+    def model_for(self, resource, name=None):
+        """
+        A shortcut decorator for linking model between resource.
 
         The `resource` may be passed as a dotted string path
         to avoid circular import problems.
         """
 
-        def register_view_for_model(model_class):
-            self.register_view(
-                model_class, resource=resource, view_name=view_name)
-            return model_class
-        return register_view_for_model
+        def register_link_for_model(model):
+            self.link(model=model, resource=resource, name=name)
+            return model
+        return register_link_for_model
 
 
 class API(BaseAPI):

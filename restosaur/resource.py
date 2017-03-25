@@ -185,14 +185,18 @@ class Resource(object):
         except KeyError:
             return self._api.get_representation(model, media_type)
 
-    def model(self, view_name=None):
+    def link(self, model, name=None):
         """
-        Decorator for registering `self` (the resource)
-        as a view for the model
+        Create named link between model and resource
+        """
+        self._api.link(model=model, resource=self, name=name)
+
+    def linked_model(self, name=None):
+        """
+        Decorator for linking `self` (the resource) with model
         """
         def register_model(model_class):
-            self._api.register_view(
-                    model=model_class, resource=self, view_name=view_name)
+            self.link(model_class, name=name)
             return model_class
         return register_model
 
@@ -284,3 +288,6 @@ class Resource(object):
             uri += '?'+urllib.urlencode(final_query)
 
         return uri
+
+    def __repr__(self):
+        return '<Resource "%s">' % self.path
