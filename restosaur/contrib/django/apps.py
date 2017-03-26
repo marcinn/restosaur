@@ -6,8 +6,14 @@ class RestosaurAppConfig(AppConfig):
     verbose_name = 'Restosaur'
 
     def ready(self):
-        from .settings import AUTODISCOVER_MODULE, AUTODISCOVER
+        from .settings import (
+                AUTODISCOVER_MODULE, AUTODISCOVER_MODULES, AUTODISCOVER)
         from .utils import autodiscover
 
         if AUTODISCOVER:
-            autodiscover(AUTODISCOVER_MODULE)
+            modules = list(AUTODISCOVER_MODULES)
+
+            if AUTODISCOVER_MODULE:
+                modules.append(AUTODISCOVER_MODULE)
+
+            autodiscover(*modules)
