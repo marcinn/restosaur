@@ -148,13 +148,25 @@ And browse your posts via http://localhost:8000/posts
 ## Roadmap
 
 * 0.7 (beta) - stabilize representations and services API, remove obsolete code; better test coverage, **Python 3.x**, **Django as an optional adapter**, **Flask adapter**
-* 0.8 (beta) - add wsgi interface ~and move django adapter to `restosaur.contrib`~
+* 0.8 (beta) - add wsgi interface, code cleanup, ~move django adapter to `restosaur.contrib`~
 * 0.9 (beta) - [proposal/idea] support for predicates
 * ~0.10 (beta) - Python 3.x support~
 * 1.0 (final) - stable API, ~100% test coverage, adapters for common web frameworks, Py2/Py3, complete documentation
 
 ## Changelog
 
+0.7.0:
+  * Python 3.x support
+  * Django support - `restosaur.contrib.django` (optional)
+  * Flask support - `restosaur.contrib.flask` (optional)
+  * Added simple conditions to `restosaur.contrib.apiroot`
+  * Extended interface for URLs generation
+  * Introduced API-wide representations registry
+  * Content negotiation fixes
+  * Support for qvalue in content-negotiation
+  * Media-type based negotiation for services (controllers)
+  * New model<->resource linking interface
+  
 0.6.7:
  * make QueryDict more dict-like object
 
