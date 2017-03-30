@@ -44,30 +44,27 @@ def build_context(api, resource, request):
             content_type=content_type, content_length=content_length)
 
 
-def _do_http_response(response, content, content_type):
-    """
-    RESTResponse -> HTTPResponse factory
-    """
+def http_response_builder(response):
+    if response is None:
+        return HttpResponse()
 
     if isinstance(response, HttpResponse):
         return response
 
+    if response.serializer:
+        content = response.serializer.dumps(response.content)
+    else:
+        content = ''
+
     httpresp = HttpResponse(content, status=response.status)
 
-    if content_type:
-        httpresp['Content-Type'] = content_type
+    if response.content_type:
+        httpresp['Content-Type'] = response.content_type
 
     for header, value in response.headers.items():
         httpresp[header] = value
 
     return httpresp
-
-
-def response_builder(response, content, content_type):
-    if response is None:
-        return HttpResponse()
-    else:
-        return _do_http_response(response, content, content_type)
 
 
 class DjangoMethodDispatcher(restosaur_dispatch.DefaultResourceDispatcher):
@@ -81,5 +78,5 @@ class DjangoMethodDispatcher(restosaur_dispatch.DefaultResourceDispatcher):
 
 def resource_dispatcher_factory(api, resource):
     return restosaur_dispatch.resource_dispatcher_factory(
-                    api, resource, response_builder, build_context,
-                    dispatcher_class=DjangoMethodDispatcher)
+                api, resource, http_response_builder, build_context,
+                dispatcher_class=DjangoMethodDispatcher)

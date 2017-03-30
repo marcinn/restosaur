@@ -133,10 +133,9 @@ def resource_dispatcher_factory(
                     break
 
         if not bypass_resource_call:
-            response, content, ct = dispatcher.dispatch(
-                    ctx, args=args, kwargs=kw)
+            response = dispatcher.dispatch(ctx, args=args, kwargs=kw)
         else:
-            response, content, ct = None, None, None
+            response = None
 
         middlewares_called.reverse()
 
@@ -149,5 +148,5 @@ def resource_dispatcher_factory(
                 if method(request, response, ctx) is False:
                     break
 
-        return response_builder(response, content, ct)
+        return response_builder(response)
     return dispatch_request

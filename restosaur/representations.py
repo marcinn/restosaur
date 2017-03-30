@@ -43,7 +43,7 @@ class Representation(object):
         self.vnd = vnd
         self._transform_func = _transform_func or _pass_through_trasnform
 
-    def render(self, context, obj):
+    def transform(self, context, obj):
         """
         Renders representation of `obj` as raw content
         """
@@ -56,7 +56,13 @@ class Representation(object):
                     }
         else:
             data = self._transform_func(obj, context)
+        return data
+
+    def serialize(self, data):
         return self.serializer.dumps(data)
+
+    def render(self, context, obj):
+        return self.serialize(self.transform(context, obj))
 
     def media_type(self):
         mt = join_content_type_with_vnd(self.content_type, self.vnd)

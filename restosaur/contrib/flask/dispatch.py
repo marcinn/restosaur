@@ -27,13 +27,18 @@ def build_context(api, resource, request):
             content_length=request.content_length)
 
 
-def build_response(app, response, content, content_type):
+def build_http_response(app, response):
     if response is None:
         return flask.Response()
     else:
+        if response.serializer:
+            content = response.serializer.dumps(response.content)
+        else:
+            content = ''
+
         http_resp = app.make_response(
                 (content, response.status, response.headers))
-        http_resp.headers['Content-Type'] = content_type
+        http_resp.headers['Content-Type'] = response.content_type
         return http_resp
 
 
@@ -51,7 +56,7 @@ def register_api(api, app):
             path = '/'+path
 
         dispatcher = resource_dispatcher_factory(
-                api, resource, functools.partial(build_response, app),
+                api, resource, functools.partial(build_http_response, app),
                 context_builder=build_context)
 
         endpoint = 'restosaour_resource_%s' % id(resource)

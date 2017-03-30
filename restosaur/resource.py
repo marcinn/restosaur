@@ -141,21 +141,26 @@ class Resource(object):
                         # return no content and preserve status code
                         pass
                     else:
-                        content = representation.render(
-                                response.context, response.data)
+                        content = representation.transform(
+                                    response.context, response.data)
                         content_type = _join_ct_vnd(
                                representation.content_type, representation.vnd)
                 else:
                     # return no content and preserve status code
                     pass
             else:
-                content = representation.render(
-                        response.context, response.data)
+                content = representation.transform(
+                                response.context, response.data)
                 content_type = _join_ct_vnd(
                        representation.content_type, representation.vnd)
 
         response.content_type = content_type
-        return (response, content, content_type)
+        response.representation = representation
+        response.content = content
+        response.serializer = (
+                representation.serializer if representation else None)
+
+        return response
 
     @property
     def name(self):
