@@ -147,10 +147,10 @@ And browse your posts via http://localhost:8000/posts
 
 ## Roadmap
 
-* 0.7 (beta) - stabilize representations and services API, remove obsolete code; better test coverage
-* 0.8 (beta) - add wsgi interface and move django adapter to `restosaur.contrib`
+* 0.7 (beta) - stabilize representations and services API, remove obsolete code; better test coverage, **Python 3.x**, **Django as an optional adapter**, **Flask adapter**
+* 0.8 (beta) - add wsgi interface ~and move django adapter to `restosaur.contrib`~
 * 0.9 (beta) - [proposal/idea] support for predicates
-* 0.10 (beta) - Python 3.x support
+* ~0.10 (beta) - Python 3.x support~
 * 1.0 (final) - stable API, ~100% test coverage, adapters for common web frameworks, Py2/Py3, complete documentation
 
 ## Changelog
