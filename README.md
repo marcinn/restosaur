@@ -26,9 +26,11 @@ You get a set of tools to build your real RESTful service.
   * It's simple - does not require knoweldge about metaclasses, mixins nor complex inheritance.
   * Can be easily adapted to any HTTP framework
 
-## Documentation
+## Documentation & development
 
-* http://restosaur.readthedocs.io/en/0.7/
+* RTD: http://restosaur.readthedocs.io/en/0.7/
+* Support & community: https://groups.google.com/forum/#!forum/restosaur-users 
+* Development: https://restosaur.slack.com/
 
 ## Quickstart
 
