@@ -1,7 +1,10 @@
 # restosaur
 
 ![TravisBadge](https://travis-ci.org/marcinn/restosaur.svg?branch=master)
-
+![WheelBadge](https://img.shields.io/pypi/wheel/restosaur.svg)
+![PythonBadge](https://img.shields.io/pypi/pyversions/restosaur.svg)
+![StatusBadge](https://img.shields.io/pypi/status/restosaur.svg)
+![LicenseBadge](https://img.shields.io/pypi/l/restosaur.svg)
 
 RESTful library for Django
 
@@ -22,6 +25,9 @@ You get a set of tools to build your real RESTful service.
   * It's simple - does not require knoweldge about metaclasses, mixins nor complex inheritance.
   * Can be easily adapted to any HTTP framework
 
+## Documentation
+
+* http://restosaur.readthedocs.io/en/latest/
 
 ## Quickstart
 
