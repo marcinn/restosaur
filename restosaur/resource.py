@@ -104,6 +104,7 @@ class Resource(object):
     def _http_response(self, response):
         content = ''
         content_type = self._default_content_type
+        representation = None
 
         if response.data is not None:
             try:
@@ -153,6 +154,7 @@ class Resource(object):
                 content_type = _join_ct_vnd(
                        representation.content_type, representation.vnd)
 
+        response.content_type = content_type
         return (response, content, content_type)
 
     @property
