@@ -1,6 +1,10 @@
 # restosaur
 
 ![TravisBadge](https://travis-ci.org/marcinn/restosaur.svg?branch=master)
+![WheelBadge](https://img.shields.io/pypi/wheel/restosaur.svg)
+![PythonBadge](https://img.shields.io/pypi/pyversions/restosaur.svg)
+![StatusBadge](https://img.shields.io/pypi/status/restosaur.svg)
+![LicenseBadge](https://img.shields.io/pypi/l/restosaur.svg)
 
 
 RESTful library for Django
@@ -22,6 +26,11 @@ You get a set of tools to build your real RESTful service.
   * It's simple - does not require knoweldge about metaclasses, mixins nor complex inheritance.
   * Can be easily adapted to any HTTP framework
 
+## Documentation & development
+
+* RTD: http://restosaur.readthedocs.io/en/0.7/
+* Support & community: https://groups.google.com/forum/#!forum/restosaur-users 
+* Development: https://restosaur.slack.com/
 
 ## Quickstart
 
@@ -140,14 +149,26 @@ And browse your posts via http://localhost:8000/posts
 
 ## Roadmap
 
-* 0.7 (beta) - stabilize representations and services API, remove obsolete code; better test coverage
-* 0.8 (beta) - add wsgi interface and move django adapter to `restosaur.contrib`
+* 0.7 (beta) - stabilize representations and services API, remove obsolete code; better test coverage, **Python 3.x**, **Django as an optional adapter**, **Flask adapter**
+* 0.8 (beta) - add wsgi interface, code cleanup, `contrib.apibrowser`, ~move django adapter to `restosaur.contrib`~
 * 0.9 (beta) - [proposal/idea] support for predicates
-* 0.10 (beta) - Python 3.x support
+* ~0.10 (beta) - Python 3.x support~
 * 1.0 (final) - stable API, ~100% test coverage, adapters for common web frameworks, Py2/Py3, complete documentation
 
 ## Changelog
 
+0.7.0:
+  * Python 3.x support
+  * Django support - `restosaur.contrib.django` (optional)
+  * Flask support - `restosaur.contrib.flask` (optional)
+  * Added simple conditions to `restosaur.contrib.apiroot`
+  * Extended interface for URLs generation
+  * Introduced API-wide representations registry
+  * Content negotiation fixes
+  * Support for qvalue in content-negotiation
+  * Media-type based negotiation for services (controllers)
+  * New model<->resource linking interface
+  
 0.6.7:
  * make QueryDict more dict-like object
 
