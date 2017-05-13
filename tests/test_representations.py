@@ -55,6 +55,20 @@ class ContentNegotiationTestCase(BaseTestCase):
         resp = self.call(self.detail, 'get', HTTP_ACCEPT='application/json')
         self.assertEqual(resp.status_code, 200)
 
+    def test_using_global_representation_of_specified_media_type(self):
+        @self.detail.representation(model=dict, media='text/plain')
+        def detail_text_plain(obj, ctx):
+            return str(obj)
+
+        @self.detail.representation(media='text/html')
+        def detail_text_html(obj, ctx):
+            return '<h1>%s</h1>' % str(obj)
+
+        resp = self.call(
+                self.detail, 'get', HTTP_ACCEPT='text/html;q=0.9,*/*;q=0.8')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'text/html')
+
 
 class ErrorsContentNegotiationTestCase(BaseTestCase):
     def test_returning_plaintext_error_message(self):

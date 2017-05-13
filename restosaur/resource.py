@@ -182,15 +182,25 @@ class Resource(object):
         return result + self._api.representations
 
     def has_representation_for(self, model, media_type):
+        match_all_repr = None
+        if media_type in self._representations:
+            match_all_repr = None in self._representations[media_type]
         return (media_type in self._representations
                 and model in self._representations[media_type]) or (
-                        self._api.has_representation_for(model, media_type))
+                    self._api.has_representation_for(model, media_type)) or (
+                            match_all_repr)
 
     def get_representation(self, model, media_type):
         try:
             return self._representations[media_type][model]
         except KeyError:
-            return self._api.get_representation(model, media_type)
+            try:
+                return self._api.get_representation(model, media_type)
+            except UnknownRepresentation as ex:
+                try:
+                    return self._representations[media_type][None]
+                except KeyError:
+                    raise ex
 
     def link(self, model, name=None):
         """
