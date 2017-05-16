@@ -58,7 +58,7 @@ class DefaultResourceDispatcher(object):
 
         if ctx.content_length and ctx.content_type:
             if ctx.request_content_type:
-                if request.body:
+                if ctx.data:
                     try:
                         ctx.validator = resource._validators[
                                     ctx.request_content_type]
