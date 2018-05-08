@@ -1,4 +1,5 @@
 import six
+
 from . import contentnegotiation
 
 
@@ -87,3 +88,10 @@ def force_text(s, encoding='utf-8', errors='strict'):
             # to unicode.
             s = ' '.join(force_text(arg, encoding, errors) for arg in s)
     return s
+
+
+def get_types_to_check(cls):
+    if cls is None:
+        return [None]
+    else:
+        return type.mro(cls)

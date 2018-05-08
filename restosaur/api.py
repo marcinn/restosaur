@@ -5,7 +5,7 @@ from .representations import (
         Representation, RestosaurExceptionDict,
         restosaur_exception_dict_as_text)
 from .resource import Resource
-from .utils import join_content_type_with_vnd
+from .utils import join_content_type_with_vnd, get_types_to_check
 from .context import Context
 from .linking import ModelLinksRegistry
 
@@ -72,15 +72,31 @@ class BaseAPI(object):
         self._representations[repr_key][type_] = representation
 
     def get_representation(self, model, media_type):
-        try:
-            return self._representations[media_type][model]
-        except KeyError:
-            raise UnknownRepresentation('%s for %s' % (
-                        media_type, model))
+        if media_type not in self._representations:
+            raise UnknownRepresentation(
+                '%s has no representation for %s and "%s"' % (
+                    self, model, media_type))
+
+        types_to_check = get_types_to_check(model)
+
+        for cls in types_to_check:
+            try:
+                return self._representations[media_type][cls]
+            except KeyError:
+                pass
+        raise UnknownRepresentation(
+            '%s has no representation for %s and "%s"' % (
+                        self, model, media_type))
 
     def has_representation_for(self, model, media_type):
-        return (media_type in self._representations
-                and model in self._representations[media_type])
+        if media_type not in self._representations:
+            return False
+
+        types_to_check = get_types_to_check(model)
+
+        return any(map(
+            lambda x: x in self._representations[media_type],
+            types_to_check))
 
     @property
     def representations(self):

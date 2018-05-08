@@ -114,7 +114,11 @@ def match_representation(resource, ctx, instance, accept=None):
 
     exclude = []
     representations = resource.representations
-    model = type(instance)
+
+    if instance is None:
+        model = None
+    else:
+        model = type(instance)
 
     while True:
         try:
@@ -124,13 +128,11 @@ def match_representation(resource, ctx, instance, accept=None):
             break
 
         if not resource.has_representation_for(model, mediatype):
+            if resource.has_representation_for(None, mediatype):
+                return resource.get_representation(None, mediatype)
             exclude.append(mediatype)
         else:
             return resource.get_representation(model, mediatype)
-
-    for mediatype in exclude:
-        if resource.has_representation_for(None, mediatype):
-            return resource.get_representation(None, mediatype)
 
     raise NoRepresentationFound(
         '%s has no registered representation handler for `%s`' % (

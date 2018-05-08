@@ -8,7 +8,10 @@ from .representations import (  # NOQA
         RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
         Representation, Validator, UnknownRepresentation,
         match_representation, NoRepresentationFound, NoMoreMediaTypes)
-from .utils import join_content_type_with_vnd, split_mediatype
+from .utils import (
+        join_content_type_with_vnd,
+        split_mediatype,
+        get_types_to_check)
 from . import responses, urltemplate, serializers
 
 
@@ -182,25 +185,35 @@ class Resource(object):
         return result + self._api.representations
 
     def has_representation_for(self, model, media_type):
-        match_all_repr = None
-        if media_type in self._representations:
-            match_all_repr = None in self._representations[media_type]
-        return (media_type in self._representations
-                and model in self._representations[media_type]) or (
-                    self._api.has_representation_for(model, media_type)) or (
-                            match_all_repr)
+        if media_type not in self._representations:
+            return self._api.has_representation_for(model, media_type)
+
+        types_to_check = get_types_to_check(model)
+
+        has_resource_repr = any(map(
+            lambda x: x in self._representations[media_type],
+            types_to_check))
+
+        return (has_resource_repr
+                or self._api.has_representation_for(model, media_type))
 
     def get_representation(self, model, media_type):
-        try:
-            return self._representations[media_type][model]
-        except KeyError:
+        types_to_check = get_types_to_check(model)
+
+        for cls in types_to_check:
             try:
-                return self._api.get_representation(model, media_type)
-            except UnknownRepresentation as ex:
-                try:
-                    return self._representations[media_type][None]
-                except KeyError:
-                    raise ex
+                return self._representations[media_type][cls]
+            except KeyError:
+                pass
+        try:
+            return self._api.get_representation(model, media_type)
+        except UnknownRepresentation as ex:
+            try:
+                return self._representations[media_type][None]
+            except KeyError:
+                raise UnknownRepresentation(
+                    'Neither %s nor %s have representation for %s and "%s"' % (
+                        self, self._api, model, media_type))
 
     def link(self, model, name=None):
         """
