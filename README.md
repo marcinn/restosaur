@@ -98,22 +98,22 @@ create their representations dependend on negotiated content type.
 The conversion must be defined explicitely per content type. This can be
 done depending on your needs:
 
-    * as a resource-only related representation,
-    * as an API wide representation,
-    * as a default representation for a content type (independent from object/model).
+* as a resource-only related representation,
+* as an API wide representation,
+* as a default representation for a content type (independent from object/model).
 
 The order of conversion is as follows:
 
-    * model/object representation defined for the resource (incl.
-      model's MRO),
-    * model/object representation defined for the API (incl. model's MRO),
-    * default representation for the resource,
-    * default representation for the API.
+* model/object representation defined for the resource (incl.
+  model's MRO),
+* model/object representation defined for the API (incl. model's MRO),
+* default representation for the resource,
+* default representation for the API.
 
 In this short example the model/object representation for the API was
 used. The code can be placed near API initialization, and should look like:
 
-```
+```python
 
 # register API-wide representation factories
 
@@ -134,6 +134,7 @@ def model_to_dict(instance, ctx):
 
 api.add_model_representation(
     Model, model_to_dict, 'application/json')
+    
 api.add_model_representation(
     QuerySet, queryset_to_json, 'application/json') 
 ```
