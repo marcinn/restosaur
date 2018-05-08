@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from django.conf import settings
 from django.utils.encoding import force_text
 from django.views import debug
 
@@ -15,7 +14,7 @@ def to_django_urlpattern(path):
 
 
 def django_html_exception(obj, ctx):
-    if settings.DEBUG:
+    if ctx.api.debug:
         resp = debug.technical_500_response(
                 ctx.request, exc_type=obj.exc_type,
                 exc_value=obj.exc_value,
