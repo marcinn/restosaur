@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='restosaur',
-      version='0.7.0b4',
+      version='0.7.0b4-2',
       description='Framework independent RESTful library',
       classifiers=[
         "Development Status :: 4 - Beta",
@@ -32,4 +32,6 @@ setup(name='restosaur',
       include_package_data=True,
       test_suite='nose.collector',
       zip_safe=True,
+      long_description=open('README.md').read(),
+      long_description_content_type='text/markdown',
       )
