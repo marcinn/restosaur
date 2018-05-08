@@ -134,6 +134,7 @@ def model_to_dict(instance, ctx):
 
 api.add_model_representation(
     Model, model_to_dict, 'application/json')
+    
 api.add_model_representation(
     QuerySet, queryset_to_json, 'application/json') 
 ```
