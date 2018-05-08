@@ -140,12 +140,16 @@ And browse your posts via http://localhost:8000/posts
 
 ## Compatibility
 
-* Django 1.6
-* Django 1.7
 * Django 1.8
 * Django 1.9
 * Django 1.10
+* Django 1.11
+* Django 2.0
+
 * Python 2.7
+* Python 3.4
+* Python 3.5
+* Python 3.6
 
 ## Roadmap
 
