@@ -113,7 +113,7 @@ The order of conversion is as follows:
 In this short example the model/object representation for the API was
 used. The code can be placed near API initialization, and should look like:
 
-```
+```python
 
 # register API-wide representation factories
 
