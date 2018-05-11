@@ -2,8 +2,9 @@ from collections import defaultdict
 
 from .representations import (
         RepresentationAlreadyRegistered, UnknownRepresentation,
-        Representation, RestosaurExceptionDict,
-        restosaur_exception_dict_as_text)
+        Representation, ExceptionRepresentation,
+        restosaur_exception_dict_as_text,
+        restosaur_exception_dict_as_dict)
 from .resource import Resource
 from .utils import join_content_type_with_vnd, get_types_to_check
 from .context import Context
@@ -50,6 +51,9 @@ class BaseAPI(object):
     def add_representation(
             self, type_, content_type, vnd=None, qvalue=None,
             serializer=None, _transform_func=None):
+
+        if type_ is None and qvalue is None:
+            qvalue = 0.01
 
         representation = Representation(
             content_type=content_type, vnd=vnd,
@@ -105,6 +109,17 @@ class BaseAPI(object):
             result += models.values()
         return result
 
+    def get_representations_for(self, model):
+        result = []
+        model_class = model
+        for models in self._representations.values():
+            matching_models = filter(
+                    lambda x: x[0] is model_class or x[0] is None,
+                    models.items())
+            result += list(map(lambda x: x[1], matching_models))
+
+        return result
+
     def linked_resource(self, model, name=None):
         """
         Return linked resource for model instance or class.
@@ -150,7 +165,9 @@ JSON = API
 
 def configure_json_api(api):
     api.add_representation(
-            RestosaurExceptionDict, content_type='application/json')
+            ExceptionRepresentation, content_type='application/json',
+            _transform_func=restosaur_exception_dict_as_dict,
+            qvalue=0.9)
     api.add_representation(
             dict, content_type='application/json')
 
@@ -163,7 +180,7 @@ def configure_json_api(api):
 
 def configure_plain_text_api(api):
     api.add_representation(
-            RestosaurExceptionDict, content_type='text/plain',
+            ExceptionRepresentation, content_type='text/plain',
             _transform_func=restosaur_exception_dict_as_text,
             qvalue=0.1)
 

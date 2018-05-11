@@ -1,6 +1,6 @@
 import traceback
 
-from .utils import Collection, join_content_type_with_vnd
+from .utils import Collection, join_content_type_with_vnd, force_text
 from . import serializers, contentnegotiation
 
 
@@ -86,20 +86,37 @@ class Validator(object):
         return self._validator_func(self.serializer.loads(context), context)
 
 
-class RestosaurExceptionDict(dict):
-    def __init__(self, ex, tb=None):
-        super(RestosaurExceptionDict, self).__init__()
+class ExceptionRepresentation(object):
+    def __init__(self, ex, tb=None, extra=None):
+        super(ExceptionRepresentation, self).__init__()
         self.exc_type = type(ex)
         self.exc_value = ex
         self.tb = tb
+        self.extra = extra
         self.status_code = 500
 
 
 def restosaur_exception_dict_as_text(obj, ctx):
     output = u'\n'.join(
             traceback.format_exception(obj.exc_type, obj.exc_value, obj.tb))
-
     return output
+
+
+def restosaur_exception_dict_as_dict(obj, ctx):
+    data = {}
+    data.update(obj.extra or {})
+    data.update({
+            'class': str(obj.exc_type),
+            'error': force_text(obj.exc_value),
+            })
+
+    if obj.tb:
+        def stack_trace(x):
+            return dict(zip(['file', 'line', 'fn', 'source'], x))
+        data['traceback'] = list(
+                map(stack_trace, traceback.extract_tb(obj.tb)))
+
+    return data
 
 
 def match_representation(resource, ctx, instance, accept=None):
@@ -113,12 +130,13 @@ def match_representation(resource, ctx, instance, accept=None):
     accept = accept or ctx.headers.get('accept') or '*/*'
 
     exclude = []
-    representations = resource.representations
 
     if instance is None:
         model = None
     else:
         model = type(instance)
+
+    representations = resource.get_representations_for(model)
 
     while True:
         try:
@@ -145,9 +163,9 @@ def _match_media_type(accept, representations, exclude=None):
     def _drop_mt_args(x):
         return x.split(';')[0]
 
-    mediatypes = list(filter(
+    mediatypes = list(set(filter(
             lambda x: _drop_mt_args(x) not in exclude, map(
-                lambda x: x.media_type(), representations)))
+                lambda x: x.media_type(), representations))))
 
     if not mediatypes:
         raise NoMoreMediaTypes

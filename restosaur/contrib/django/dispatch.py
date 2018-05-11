@@ -13,7 +13,7 @@ def build_context(api, resource, request):
         # In that cases we can't access raw body anymore, sorry
 
         raw_body = request.body
-    except:
+    except Exception:
         raw_body = None
 
     parameters = {}

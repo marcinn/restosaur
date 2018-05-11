@@ -5,7 +5,7 @@ from django.views import debug
 
 from .utils import autodiscover
 from ...api import API as BaseAPI
-from ...representations import RestosaurExceptionDict
+from ...representations import ExceptionRepresentation
 from ...urltemplate import RE_PARAMS
 
 
@@ -38,8 +38,9 @@ class API(BaseAPI):
         super(API, self).__init__(*args, **kw)
 
         self.add_representation(
-                RestosaurExceptionDict, content_type='text/html',
-                _transform_func=django_html_exception)
+                ExceptionRepresentation, content_type='text/html',
+                _transform_func=django_html_exception,
+                qvalue=0.2)
 
     def get_urls(self):
         try:

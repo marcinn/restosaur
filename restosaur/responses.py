@@ -3,8 +3,8 @@ import warnings
 
 from email.utils import formatdate
 
-from .representations import RestosaurExceptionDict
-from .utils import Collection, force_text
+from .representations import ExceptionRepresentation
+from .utils import Collection
 
 
 NOTSET = 'NOTSET'
@@ -267,25 +267,13 @@ class ValidationErrorResponse(ClientErrorResponse):
 
 
 def exception_response_factory(context, ex, tb=None, extra=None, cls=None):
-    import traceback
-
     if not cls:
         if isinstance(ex, NotImplementedError):
             cls = NotImplementedResponse
         else:
             cls = InternalErrorResponse
 
-    data = RestosaurExceptionDict(ex, tb=tb)
-    data.update(extra or {})
-    data.update({
-        'error': force_text(ex),
-        })
-
-    if tb:
-        def stack_trace(x):
-            return dict(zip(['file', 'line', 'fn', 'source'], x))
-        data['traceback'] = list(map(stack_trace, traceback.extract_tb(tb)))
-
+    data = ExceptionRepresentation(ex, tb=tb, extra=extra)
     response = cls(context=context, data=data)
     data.status_code = response.status
 

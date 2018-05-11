@@ -254,6 +254,10 @@ class Context(object):
     def ValidationError(self, *args, **kwargs):  # 422 WEBDAV Deprecated
         return responses.ValidationErrorResponse(self, *args, **kwargs)
 
+    def InternalServerError(self, *args, **kwargs):
+        return responses.InternalErrorResponse(self, *args, **kwargs)
+    InternalError = InternalServerError
+
     def Entity(self, *args, **kwargs):  # deprecated, 200
         return responses.EntityResponse(self, *args, **kwargs)
 

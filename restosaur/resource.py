@@ -184,6 +184,16 @@ class Resource(object):
             result += models.values()
         return result + self._api.representations
 
+    def get_representations_for(self, model):
+        result = []
+        model_class = model
+        for models in self._representations.values():
+            matching_models = filter(
+                    lambda x: x[0] == model_class or x[0] is None,
+                    models.items())
+            result += list(map(lambda x: x[1], matching_models))
+        return result + self._api.get_representations_for(model)
+
     def has_representation_for(self, model, media_type):
         if media_type not in self._representations:
             return self._api.has_representation_for(model, media_type)
@@ -270,6 +280,9 @@ class Resource(object):
                 and model in self._representations[repr_key]):
             raise RepresentationAlreadyRegistered(
                     '%s: %s (%s)' % (self._path, repr_key, model))
+
+        if model is None and qvalue is None:
+            qvalue = 0.01
 
         obj = Representation(
                 vnd=vnd, content_type=content_type, serializer=serializer,
