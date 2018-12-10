@@ -58,11 +58,11 @@ class Representation(object):
             data = self._transform_func(obj, context)
         return data
 
-    def serialize(self, data):
-        return self.serializer.dumps(data)
+    def serialize(self, context, data):
+        return self.serializer.dumps(context, data)
 
     def render(self, context, obj):
-        return self.serialize(self.transform(context, obj))
+        return self.serialize(context, self.transform(context, obj))
 
     def media_type(self):
         mt = join_content_type_with_vnd(self.content_type, self.vnd)

@@ -67,7 +67,7 @@ class JsonSerializer(object):
             except (TypeError, ValueError) as ex:
                 raise DeserializationError(ex)
 
-    def dumps(self, data):
+    def dumps(self, ctx, data):
         try:
             return self._json.dumps(data)
         except (TypeError, ValueError) as ex:
@@ -81,7 +81,7 @@ class MultiPartFormDataSerializer(object):
         data.update(ctx.files)
         return data
 
-    def dumps(self, data):
+    def dumps(self, ctx, data):
         raise NotImplementedError
 
 
@@ -89,7 +89,7 @@ class HTMLSerializer(object):
     def loads(self, ctx):
         return ctx.raw
 
-    def dumps(self, data):
+    def dumps(self, ctx, data):
         try:
             return six.text_type(data)
         except (TypeError, ValueError, UnicodeEncodeError,
@@ -101,7 +101,7 @@ class PlainTextSerializer(object):
     def loads(self, ctx):
         return ctx.raw
 
-    def dumps(self, data):
+    def dumps(self, ctx, data):
         try:
             return six.text_type(data)
         except (TypeError, ValueError, UnicodeEncodeError,

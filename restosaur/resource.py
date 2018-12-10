@@ -1,5 +1,6 @@
 import functools
 import logging
+import warnings
 import urllib
 
 from collections import OrderedDict, defaultdict
@@ -12,7 +13,7 @@ from .utils import (
         join_content_type_with_vnd,
         split_mediatype,
         get_types_to_check)
-from . import responses, urltemplate, serializers
+from . import responses, urltemplate, serializers, deprecation
 
 
 log = logging.getLogger(__name__)
@@ -217,7 +218,7 @@ class Resource(object):
                 pass
         try:
             return self._api.get_representation(model, media_type)
-        except UnknownRepresentation as ex:
+        except UnknownRepresentation:
             try:
                 return self._representations[media_type][None]
             except KeyError:
@@ -272,6 +273,12 @@ class Resource(object):
             self, model=None, vnd=None, content_type=None, qvalue=None,
             serializer=None, _transform_func=None):
 
+        if model is None:
+            warnings.warn(
+                'Representation for resource %s should be narrowed to '
+                'specified model. Starting from v0.9 representation will '
+                'require model explicitely.' % self,
+                deprecation.RemovedInRestosaur09Warning)
         content_type = content_type or self._default_content_type
         repr_key = _join_ct_vnd(content_type, vnd)
 

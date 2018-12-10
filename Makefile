@@ -1,3 +1,9 @@
+PHONY = env
+
+env:
+	pip install -r requirements.txt
+	pip install -r requirements-dev.txt
+
 package:
 	@rm -rf dist/
 	@mkdir dist
@@ -6,3 +12,5 @@ package:
 
 upload:
 	twine upload dist/*
+
+

@@ -52,7 +52,7 @@ def http_response_builder(response):
         return response
 
     if response.serializer:
-        content = response.serializer.dumps(response.content)
+        content = response.serializer.dumps(response.context, response.content)
     else:
         content = ''
 
