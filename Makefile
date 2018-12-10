@@ -1,8 +1,13 @@
 PHONY = env
 
-env:
+env: clean
 	pip install -r requirements.txt
 	pip install -r requirements-dev.txt
+
+
+clean:
+	find -name "*.py(c|o)" -exec rm {} \;
+
 
 package:
 	@rm -rf dist/
@@ -12,5 +17,4 @@ package:
 
 upload:
 	twine upload dist/*
-
 
