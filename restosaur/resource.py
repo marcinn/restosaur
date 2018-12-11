@@ -6,8 +6,8 @@ import urllib
 from collections import OrderedDict, defaultdict
 
 from .representations import (  # NOQA
-        RepresentationAlreadyRegistered, ValidatorAlreadyRegistered,
-        Representation, Validator, UnknownRepresentation,
+        RepresentationAlreadyRegistered, ValidationAlreadyRegistered,
+        Representation, Validation, UnknownRepresentation,
         match_representation, NoRepresentationFound, NoMoreMediaTypes)
 from .utils import (
         join_content_type_with_vnd,
@@ -50,14 +50,14 @@ class Resource(object):
         self._registered_methods = set()
         self._name = name or resource_name_from_path(path)
         self._representations = OrderedDict()
-        self._validators = OrderedDict()
+        self._validations = OrderedDict()
         self._default_content_type = default_content_type
         self._supported_media_types = defaultdict(set)
 
         # register "pass-through" validators
 
         for content_type, serializer in serializers.get_all():
-            self.add_validator(content_type=content_type)
+            self.add_validation(content_type=content_type)
 
         if link_model:
             self._api.register_view(
@@ -261,11 +261,11 @@ class Resource(object):
             return func
         return wrapped
 
-    def validator(self, vnd=None, content_type=None, serializer=None):
+    def validation(self, vnd=None, content_type=None, serializer=None):
         def wrapped(func):
-            self.add_validator(
+            self.add_validation(
                     vnd=vnd, content_type=content_type, serializer=serializer,
-                    _validator_func=func)
+                    validator=func)
             return func
         return wrapped
 
@@ -299,23 +299,23 @@ class Resource(object):
         self._representations[repr_key][model] = obj
         return obj
 
-    def add_validator(
+    def add_validation(
             self, vnd=None, content_type=None, serializer=None,
-            _validator_func=None):
+            validator=None):
 
         content_type = content_type or self._default_content_type
         repr_key = _join_ct_vnd(content_type, vnd)
 
-        if (repr_key in self._validators and
+        if (repr_key in self._validations and
                 not repr_key == self._default_content_type):
-            raise ValidatorAlreadyRegistered(
+            raise ValidationAlreadyRegistered(
                     '%s: %s' % (self._path, repr_key))
 
-        obj = Validator(
+        obj = Validation(
                 vnd=vnd, content_type=content_type, serializer=serializer,
-                _validator_func=_validator_func)
+                validator=validator)
 
-        self._validators[content_type] = obj
+        self._validations[content_type] = obj
         return obj
 
     def uri(self, context, params=None, query=None, append_query=False):

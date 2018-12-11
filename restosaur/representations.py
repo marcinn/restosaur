@@ -13,7 +13,7 @@ class UnknownRepresentation(Exception):
     pass
 
 
-class ValidatorAlreadyRegistered(Exception):
+class ValidationAlreadyRegistered(Exception):
     pass
 
 
@@ -61,21 +61,21 @@ class Representation(object):
         return '%s; q=%s' % (mt, self.qvalue)
 
 
-class Validator(object):
+class Validation(object):
     def __init__(
             self, vnd=None, content_type='application/json',
-            serializer=None, _validator_func=None):
+            serializer=None, validator=None):
 
         self.serializer = serializer or serializers.get(content_type)
         self.content_type = content_type
         self.vnd = vnd
-        self._validator_func = _validator_func or _pass_through_validation
+        self.validator = validator or _pass_through_validation
 
     def parse(self, context):
         """
         Parses raw representation content and builds object
         """
-        return self._validator_func(self.serializer.loads(context), context)
+        return self.validator(self.serializer.loads(context), context)
 
 
 def restosaur_exception_as_text(obj, ctx):

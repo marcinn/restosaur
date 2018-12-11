@@ -59,13 +59,13 @@ class DefaultResourceDispatcher(object):
             if ctx.request_content_type:
                 if ctx.raw:
                     try:
-                        ctx.validator = resource._validators[
+                        ctx.validation = resource._validations[
                                     ctx.request_content_type]
                     except KeyError:
                         pass
                     else:
                         try:
-                            ctx.body = ctx.validator.parse(ctx)
+                            ctx.body = ctx.validation.parse(ctx)
                         except serializers.DeserializationError as ex:
                             resp = ctx.BadRequest(ex)
                             return resource._http_response(resp)
