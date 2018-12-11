@@ -2,9 +2,9 @@ from collections import defaultdict
 
 from .representations import (
         RepresentationAlreadyRegistered, UnknownRepresentation,
-        Representation, ExceptionRepresentation,
-        restosaur_exception_dict_as_text,
-        restosaur_exception_dict_as_dict)
+        Representation,
+        restosaur_exception_as_text,
+        restosaur_exception_as_dict)
 from .resource import Resource
 from .utils import join_content_type_with_vnd, get_types_to_check
 from .context import Context
@@ -50,14 +50,14 @@ class BaseAPI(object):
 
     def add_representation(
             self, type_, content_type, vnd=None, qvalue=None,
-            serializer=None, _transform_func=None):
+            serializer=None, transformer=None):
 
         if type_ is None and qvalue is None:
             qvalue = 0.01
 
         representation = Representation(
             content_type=content_type, vnd=vnd,
-            serializer=serializer, _transform_func=_transform_func,
+            serializer=serializer, transformer=transformer,
             qvalue=qvalue)
 
         self.register_representation(type_, representation)
@@ -82,7 +82,6 @@ class BaseAPI(object):
                     self, model, media_type))
 
         types_to_check = get_types_to_check(model)
-
         for cls in types_to_check:
             try:
                 return self._representations[media_type][cls]
@@ -111,10 +110,11 @@ class BaseAPI(object):
 
     def get_representations_for(self, model):
         result = []
-        model_class = model
+        types_to_check = get_types_to_check(model)
+
         for models in self._representations.values():
             matching_models = filter(
-                    lambda x: x[0] is model_class or x[0] is None,
+                    lambda x: x[0] in types_to_check or x[0] is None,
                     models.items())
             result += list(map(lambda x: x[1], matching_models))
 
@@ -165,23 +165,17 @@ JSON = API
 
 def configure_json_api(api):
     api.add_representation(
-            ExceptionRepresentation, content_type='application/json',
-            _transform_func=restosaur_exception_dict_as_dict,
+            Exception, content_type='application/json',
+            transformer=restosaur_exception_as_dict,
             qvalue=0.9)
     api.add_representation(
             dict, content_type='application/json')
 
-    # backward compatibility
-
-    from .utils import Collection
-    api.add_representation(
-            Collection, content_type='application/json')
-
 
 def configure_plain_text_api(api):
     api.add_representation(
-            ExceptionRepresentation, content_type='text/plain',
-            _transform_func=restosaur_exception_dict_as_text,
+            Exception, content_type='text/plain',
+            transformer=restosaur_exception_as_text,
             qvalue=0.1)
 
 

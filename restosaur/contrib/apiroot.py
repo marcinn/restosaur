@@ -35,7 +35,7 @@ class ApiRoot(object):
             root_resource.get()(self.as_view())
             root_resource.add_representation(
                     model=type(self), content_type='application/json',
-                    _transform_func=type(self).as_dict)
+                    transformer=type(self).as_dict)
 
     def register(self, resource, name=None, condition=None):
         name = name or autogenerate_resource_name(resource)

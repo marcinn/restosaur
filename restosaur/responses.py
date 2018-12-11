@@ -1,10 +1,6 @@
 import times
-import warnings
 
 from email.utils import formatdate
-
-from .representations import ExceptionRepresentation
-from .utils import Collection
 
 
 NOTSET = 'NOTSET'
@@ -222,9 +218,9 @@ class UnsupportedMediaTypeResponse(ClientErrorResponse):
                 context, data=None, status=415, headers=headers)
 
 
-class InternalErrorResponse(ServerErrorResponse):
+class InternalServerErrorResponse(ServerErrorResponse):
     def __init__(self, context, data=None, headers=None):
-        super(InternalErrorResponse, self).__init__(
+        super(InternalServerErrorResponse, self).__init__(
                 context, data=data, status=500, headers=headers)
 
 
@@ -232,49 +228,3 @@ class NotImplementedResponse(ServerErrorResponse):
     def __init__(self, context, data=None, headers=None):
         super(NotImplementedResponse, self).__init__(
                 context, data=data, status=501, headers=headers)
-
-
-# deprecated custom responses
-
-class CollectionResponse(SuccessfulResponse):
-    def __init__(self, context, iterable, totalCount=None, key=None, **kwargs):
-        warnings.warn(
-            '`CollectionResponse` will be removed in Restosaur v0.9. '
-            'You should use plain `Response` or `OKResponse` '
-            '(ctx.Response() / ctx.OK() respectively).',
-            DeprecationWarning, stacklevel=3)
-
-        coll_obj = Collection(
-                context, iterable, key=key, totalcount=totalCount)
-        super(CollectionResponse, self).__init__(
-                context, data=coll_obj, **kwargs)
-
-
-class EntityResponse(OKResponse):
-    pass
-
-
-Response = OKResponse
-
-
-class ValidationErrorResponse(ClientErrorResponse):
-    def __init__(self, context, errors, headers=None):
-        resp = {
-                'errors': errors,
-                }
-        super(ValidationErrorResponse, self).__init__(
-                context, data=resp, status=422, headers=headers)
-
-
-def exception_response_factory(context, ex, tb=None, extra=None, cls=None):
-    if not cls:
-        if isinstance(ex, NotImplementedError):
-            cls = NotImplementedResponse
-        else:
-            cls = InternalErrorResponse
-
-    data = ExceptionRepresentation(ex, tb=tb, extra=extra)
-    response = cls(context=context, data=data)
-    data.status_code = response.status
-
-    return response

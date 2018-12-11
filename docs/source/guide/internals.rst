@@ -78,8 +78,8 @@ Restosaur defines common types of responses:
   responses.MethodNotAllowedResponse        ctx.MethodNotAllowed()      405
   responses.NotAcceptableResponse           ctx.NotAcceptable()         406
   responses.UnsupportedMediaTypeResponse    ctx.UnsupportedMediaType()  415
-  responses.InternalErrorResponse           --                          500
-  responses.NotImplementedResponse          --                          501
+  responses.InternalServerErrorResponse     ctx.InternalServerError()   500
+  responses.NotImplementedResponse          ctx.NotImplemented()        501
 =========================================== =========================== ====
 
 

@@ -30,11 +30,11 @@ class DefaultRepresentationTestCase(ResourceTestCase):
 
         @self.entity.get()
         def entity_GET(ctx):
-            return ctx.Entity({'some': 'test'})
+            return ctx.OK({'some': 'test'})
 
         @self.entity.post()
         def entity_POST(ctx):
-            return ctx.Entity({'some': 'test'})
+            return ctx.OK({'some': 'test'})
 
     def test_successful_getting_200_status_code(self):
         resp = self.call(self.entity, 'get')
@@ -81,7 +81,8 @@ class DefaultRepresentationTestCase(ResourceTestCase):
     def test_returning_default_content_type_for_GET_and_unsupported_representation(self):  # NOQA
         resp = self.call(
                 self.entity, 'get', HTTP_ACCEPT='application/eggsandmeat')
-        self.assertEqual(resp['Content-Type'], self.entity.default_content_type)
+        self.assertEqual(
+                resp['Content-Type'], self.entity.default_content_type)
 
     def test_returning_nocontent_for_GET_and_unsupported_representation(self):  # NOQA
         resp = self.call(
@@ -213,7 +214,7 @@ class MethodsHandlingTestCase(ResourceTestCase):
         @self.put.put()
         @self.options.options()
         def response_200_OK(ctx):
-            return ctx.Response()
+            return ctx.OK()
 
     def test_succesful_handling_registered_GET(self):
         resp = self.call(self.get, 'get')

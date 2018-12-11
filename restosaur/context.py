@@ -102,7 +102,7 @@ class Context(object):
 
     def transform_representation(self, model):
         representation = self.match_representation(model)
-        return representation._transform_func(model, self)
+        return representation.transform(model, self)
 
     def url(
             self, model=None, resource=None, name=None,
@@ -251,15 +251,8 @@ class Context(object):
     def UnsupportedMediaType(self, *args, **kwargs):  # 415
         return responses.UnsupportedMediaTypeResponse(self, *args, **kwargs)
 
-    def ValidationError(self, *args, **kwargs):  # 422 WEBDAV Deprecated
-        return responses.ValidationErrorResponse(self, *args, **kwargs)
-
     def InternalServerError(self, *args, **kwargs):
-        return responses.InternalErrorResponse(self, *args, **kwargs)
-    InternalError = InternalServerError
+        return responses.InternalServerErrorResponse(self, *args, **kwargs)
 
-    def Entity(self, *args, **kwargs):  # deprecated, 200
-        return responses.EntityResponse(self, *args, **kwargs)
-
-    def Collection(self, *args, **kwargs):  # deprecated, 200
-        return responses.CollectionResponse(self, *args, **kwargs)
+    def NotImplemented(self, *args, **kwargs):
+        return responses.NotImplementedResponse(self, *args, **kwargs)

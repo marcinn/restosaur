@@ -1,8 +1,8 @@
 
 
-class RestException(Exception):
+class RestosaurException(Exception):
     pass
 
 
-class Http404(RestException):
+class Http404(RestosaurException):
     pass

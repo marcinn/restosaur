@@ -2,7 +2,7 @@ import logging
 import sys
 
 from .exceptions import Http404
-from . import responses, serializers, contentnegotiation
+from . import serializers, contentnegotiation
 
 
 log = logging.getLogger(__name__)
@@ -15,7 +15,6 @@ class DefaultResourceDispatcher(object):
     def dispatch(self, ctx, args=None, kwargs=None):
         resource = self.resource
         method = ctx.method
-        request = ctx.request
 
         # support for X-HTTP-METHOD-OVERRIDE
 
@@ -68,8 +67,7 @@ class DefaultResourceDispatcher(object):
                         try:
                             ctx.body = ctx.validator.parse(ctx)
                         except serializers.DeserializationError as ex:
-                            resp = responses.exception_response_factory(
-                                    ctx, ex, cls=responses.BadRequestResponse)
+                            resp = ctx.BadRequest(ex)
                             return resource._http_response(resp)
             elif not ctx.content_length:
                 ctx.body = None
@@ -84,11 +82,9 @@ class DefaultResourceDispatcher(object):
         except Http404:
             return resource._http_response(ctx.NotFound())
         except Exception as ex:
-            if resource._api.debug:
-                tb = sys.exc_info()[2]
-            else:
-                tb = None
-            resp = responses.exception_response_factory(ctx, ex, tb)
+            resp_cls = ctx.NotImplemented if isinstance(
+                    ex, NotImplementedError) else ctx.InternalServerError
+            resp = resp_cls(ex)
             log.exception(
                     'Internal Server Error: %s', ctx.request.path,
                     exc_info=sys.exc_info(),

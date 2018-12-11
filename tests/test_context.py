@@ -205,8 +205,8 @@ class TestContextResponseFactories(ContextTestCase):
         self.ctx = self.factory('get', '/foo/', lambda ctx: None)
 
     def test_base_response(self):
-        obj = self.ctx.Response()
-        self.assertTrue(isinstance(obj, responses.Response))
+        obj = self.ctx.OK()
+        self.assertTrue(isinstance(obj, responses.OKResponse))
 
     def test_created_response(self):
         obj = self.ctx.Created()
@@ -235,18 +235,6 @@ class TestContextResponseFactories(ContextTestCase):
     def test_notacceptable_response(self):
         obj = self.ctx.NotAcceptable()
         self.assertTrue(isinstance(obj, responses.NotAcceptableResponse))
-
-    def test_entity_response(self):
-        obj = self.ctx.Entity()
-        self.assertTrue(isinstance(obj, responses.EntityResponse))
-
-    def test_collection_response(self):
-        obj = self.ctx.Collection([])
-        self.assertTrue(isinstance(obj, responses.CollectionResponse))
-
-    def test_validationerror_response(self):
-        obj = self.ctx.ValidationError({})
-        self.assertTrue(isinstance(obj, responses.ValidationErrorResponse))
 
     def test_notmodified_response(self):
         obj = self.ctx.NotModified()

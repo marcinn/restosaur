@@ -257,7 +257,7 @@ class Resource(object):
             for ct, v, args in content_types:
                 self.add_representation(
                     model=model, vnd=v, content_type=ct, qvalue=args.get('q'),
-                    serializer=serializer, _transform_func=func)
+                    serializer=serializer, transformer=func)
             return func
         return wrapped
 
@@ -271,7 +271,7 @@ class Resource(object):
 
     def add_representation(
             self, model=None, vnd=None, content_type=None, qvalue=None,
-            serializer=None, _transform_func=None):
+            serializer=None, transformer=None):
 
         if model is None:
             warnings.warn(
@@ -293,7 +293,7 @@ class Resource(object):
 
         obj = Representation(
                 vnd=vnd, content_type=content_type, serializer=serializer,
-                _transform_func=_transform_func, qvalue=qvalue)
+                transformer=transformer, qvalue=qvalue)
 
         self._representations.setdefault(repr_key, {})
         self._representations[repr_key][model] = obj
