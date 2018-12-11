@@ -4,7 +4,7 @@ from django.utils.encoding import force_text
 from django.views import debug
 
 from .utils import autodiscover
-from ...api import API as BaseAPI
+from ...api import API as BaseAPI, JsonAPIMixin
 from ...urltemplate import RE_PARAMS
 
 
@@ -83,3 +83,7 @@ class API(BaseAPI):
         Shortcut for `restosaur.autodiscover()`
         """
         autodiscover(*args, **kw)
+
+
+class JsonAPI(JsonAPIMixin, API):
+    pass

@@ -1,7 +1,7 @@
 import unittest
 import json
 
-from restosaur import API
+from restosaur import JsonAPI
 from restosaur.contrib.django.dispatch import resource_dispatcher_factory
 from .utils import response_content_as_text
 
@@ -12,7 +12,7 @@ class BaseTestCase(unittest.TestCase):
 
         from django.test import RequestFactory
 
-        self.api = API('foo')
+        self.api = JsonAPI('foo')
         self.collection = self.api.resource('items')
         self.detail = self.api.resource('items/detail')
 
@@ -71,11 +71,12 @@ class ContentNegotiationTestCase(BaseTestCase):
 
 
 class ErrorsContentNegotiationTestCase(BaseTestCase):
-    def test_returning_plaintext_error_message(self):
+    def test_returning_json_error_message_for_text_plain_request(self):
         resp = self.call(
                 self.detail, 'post', content_type='test/error500',
                 HTTP_ACCEPT='text/plain')
-        self.assertIn(b'RuntimeError: a runtime error', resp.content)
+        data = json.loads(response_content_as_text(resp))
+        self.assertEqual(data['error'], 'a runtime error')
 
     def test_returning_json_error_message(self):
         resp = self.call(
@@ -90,11 +91,11 @@ class ErrorsContentNegotiationTestCase(BaseTestCase):
                 HTTP_ACCEPT='foo/bar')
         self.assertEqual(resp['Content-Type'], 'application/json')
 
-    def test_returning_plaintex_error_message_for_not_accepted_text_type(self):
+    def test_returning_json_error_message_for_not_accepted_text_type(self):
         resp = self.call(
                 self.detail, 'post', content_type='test/error500',
                 HTTP_ACCEPT='text/unsupported')
-        self.assertEqual(resp['Content-Type'], 'text/plain')
+        self.assertEqual(resp['Content-Type'], 'application/json')
 
 
 class DeprecatedResponseTestCase(BaseTestCase):

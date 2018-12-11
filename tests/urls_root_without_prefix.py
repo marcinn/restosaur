@@ -1,6 +1,6 @@
-from restosaur.contrib.django import API
+from restosaur.contrib.django import JsonAPI
 
-api = API()
+api = JsonAPI()
 root = api.resource('/')
 
 

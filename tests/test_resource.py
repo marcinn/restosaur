@@ -1,7 +1,7 @@
 import unittest
 import json
 
-from restosaur import API
+from restosaur import JsonAPI
 from restosaur.contrib.django.dispatch import resource_dispatcher_factory
 
 from django.test import SimpleTestCase
@@ -14,7 +14,7 @@ class ResourceTestCase(unittest.TestCase):
 
         super(ResourceTestCase, self).setUp()
 
-        self.api = API('/')
+        self.api = JsonAPI('/')
         self.rqfactory = RequestFactory()
 
     def call(self, resource, method, *args, **kw):
@@ -299,25 +299,25 @@ class ExceptionsHandlingTestCase(ResourceTestCase, SimpleTestCase):
         self.assertEqual(resp_json['error'], 'Test exception')
 
     def test_not_returning_internal_server_error_traceback_when_debug_is_off(self):  # NOQA
-        self.api = API('/', debug=False)
+        self.api = JsonAPI('/', debug=False)
         resp = self.call(self.exc_resource, 'get')
         resp_json = json.loads(response_content_as_text(resp))
         self.assertFalse('traceback' in resp_json)
 
     def test_successful_returning_internal_server_error_traceback_when_debug_is_on(self):  # NOQA
-        self.api = API('/', debug=True)
+        self.api = JsonAPI('/', debug=True)
         resp = self.call(self.exc_resource, 'get')
         resp_json = json.loads(response_content_as_text(resp))
         self.assertTrue('traceback' in resp_json)
 
     def test_returning_internal_server_error_traceback_as_list(self):
-        self.api = API('/', debug=True)
+        self.api = JsonAPI('/', debug=True)
         resp = self.call(self.exc_resource, 'get')
         resp_json = json.loads(response_content_as_text(resp))
         self.assertTrue(isinstance(resp_json['traceback'], list))
 
     def test_returning_valid_internal_server_error_traceback_entity(self):
-        self.api = API('/', debug=True)
+        self.api = JsonAPI('/', debug=True)
         resp = self.call(self.exc_resource, 'get')
         resp_json = json.loads(response_content_as_text(resp))
         entity = resp_json['traceback'][0]

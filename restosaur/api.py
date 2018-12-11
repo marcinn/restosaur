@@ -151,16 +151,25 @@ class BaseAPI(object):
         return register_link_for_model
 
 
-class API(BaseAPI):
+class JsonAPIMixin(object):
     def __init__(self, *args, **kw):
-        super(API, self).__init__(*args, **kw)
+        super(JsonAPIMixin, self).__init__(*args, **kw)
 
-        # backward compatibility
-        configure_plain_text_api(self)
         configure_json_api(self)
 
 
-JSON = API
+class PlainTextAPIMixin(object):
+    def __init__(self, *args, **kw):
+        super(PlainTextAPIMixin, self).__init__(*args, **kw)
+        configure_plain_text_api(self)
+
+
+class API(BaseAPI):
+    pass
+
+
+class JsonAPI(JsonAPIMixin, API):
+    pass
 
 
 def configure_json_api(api):
@@ -184,6 +193,6 @@ def api_factory(path=None, api_class=API, **kwargs):
     return api
 
 
-def json_api_factory(path=None, api_class=API, **kwargs):
+def json_api_factory(path=None, api_class=JsonAPI, **kwargs):
     api = api_factory(path=path, api_class=api_class, **kwargs)
     return api
