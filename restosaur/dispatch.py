@@ -15,7 +15,6 @@ class DefaultResourceDispatcher(object):
     def dispatch(self, ctx, args=None, kwargs=None):
         resource = self.resource
         method = ctx.method
-        request = ctx.request
 
         # support for X-HTTP-METHOD-OVERRIDE
 
@@ -117,7 +116,7 @@ def resource_dispatcher_factory(
 
     def dispatch_request(request, *args, **kw):
         ctx = context_builder(api, resource, request)
-        bypass_resource_call = False
+        bypass_processing = False
         middlewares_called = []
 
         for middleware in api.middlewares:
@@ -128,25 +127,27 @@ def resource_dispatcher_factory(
             except AttributeError:
                 pass
             else:
-                if method(request, ctx) is False:
-                    bypass_resource_call = True
+                response = method(request, ctx)
+                if response is False or response:
+                    bypass_processing = True
                     break
 
-        if not bypass_resource_call:
+        if not bypass_processing:
             response = dispatcher.dispatch(ctx, args=args, kwargs=kw)
-        else:
-            response = None
 
-        middlewares_called.reverse()
+        response = response or None
 
-        for middleware in middlewares_called:
+        for middleware in reversed(api.middlewares):
             try:
                 method = middleware.process_response
             except AttributeError:
                 pass
             else:
-                if method(request, response, ctx) is False:
+                new_response = method(request, response, ctx)
+                if new_response is False:
                     break
+                elif new_response:
+                    response = new_response
 
         return response_builder(response)
     return dispatch_request
