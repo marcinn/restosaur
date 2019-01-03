@@ -28,9 +28,9 @@ class DefaultResourceDispatcher(object):
             headers = {
                     'Allow': ', '.join(allowed_methods),
                 }
-            return resource._http_response(ctx.MethodNotAllowed({
+            return ctx.MethodNotAllowed({
                 'error': 'Method `%s` is not registered for resource `%s`' % (
-                    method, resource._path)}, headers=headers))
+                    method, resource._path)}, headers=headers)
 
         # Negotiate payload content type and store the best matching
         # result in ctx.request_content_type
@@ -69,11 +69,11 @@ class DefaultResourceDispatcher(object):
                         except serializers.DeserializationError as ex:
                             resp = responses.exception_response_factory(
                                     ctx, ex, cls=responses.BadRequestResponse)
-                            return resource._http_response(resp)
+                            return resp
             elif not ctx.content_length:
                 ctx.body = None
             else:
-                return resource._http_response(ctx.UnsupportedMediaType())
+                return ctx.UnsupportedMediaType()
 
         log.debug('Calling %s, %s, %s' % (method, args, kwargs))
 
@@ -81,7 +81,7 @@ class DefaultResourceDispatcher(object):
             callback = resource.get_callback(method, ctx.request_content_type)
             resp = self.do_call(callback, ctx, args=args, kwargs=kwargs)
         except Http404:
-            return resource._http_response(ctx.NotFound())
+            return ctx.NotFound()
         except Exception as ex:
             if resource._api.debug:
                 tb = sys.exc_info()[2]
@@ -96,13 +96,13 @@ class DefaultResourceDispatcher(object):
                         'context': ctx,
                     }
             )
-            return resource._http_response(resp)
+            return resp
         else:
             if not resp:
                 raise TypeError(
                         'Function `%s` does not return '
                         'a response object' % callback)
-            return resource._http_response(resp)
+            return resp
 
     def do_call(self, callback, ctx, args=None, kwargs=None):
         return callback(ctx, *args, **kwargs)
@@ -128,7 +128,7 @@ def resource_dispatcher_factory(
                 pass
             else:
                 response = method(request, ctx)
-                if response is False or response:
+                if response:
                     bypass_processing = True
                     break
 
@@ -144,10 +144,9 @@ def resource_dispatcher_factory(
                 pass
             else:
                 new_response = method(request, response, ctx)
-                if new_response is False:
-                    break
-                elif new_response:
+                if new_response:
                     response = new_response
 
+        response = resource._http_response(response)
         return response_builder(response)
     return dispatch_request

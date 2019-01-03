@@ -21,6 +21,11 @@ class BreakRequestMiddleware(object):
         return context.Created()
 
 
+class BreakProcessingWithFalseMiddleware(object):
+    def process_request(self, request, context):
+        return False
+
+
 class ReplaceResponseMiddleware(object):
     def process_response(self, request, response, context):
         return context.Created()
@@ -31,16 +36,27 @@ class ModifyResponseMiddleware(object):
         response._status = 666
 
 
+class ChangingContentMiddleware(object):
+    def process_request(self, request, context):
+        return context.OK('changed')
+
+
 class BaseMiddlewareTestCase(unittest.TestCase):
+    response_content = None
+    default_content_type = 'text/plain'
+
     def setUp(self):
         self.api = self.createAPI()
+        self.api.add_representation(
+                str, 'text/plain', _transform_func=lambda x, ctx: x)
 
-        self.resource = self.api.resource('/')
+        self.resource = self.api.resource(
+                '/', default_content_type=self.default_content_type)
 
         @self.resource.get()
         @self.resource.post()
         def resource_callback(ctx):
-            return ctx.OK()
+            return ctx.OK(self.response_content)
 
     def call(
             self, resource=None, method='get', parameters=None, data=None,
@@ -144,7 +160,7 @@ class MiddlewareResponseReplacingTestCase(BaseMiddlewareTestCase):
         self.assertEqual(self.countmiddleware.process_response_count, 2)
 
 
-class MiddlewareResponseModyfingBreakTestCase(BaseMiddlewareTestCase):
+class MiddlewareResponseModyfingTestCase(BaseMiddlewareTestCase):
     def createAPI(self):
         self.countmiddleware = CountMiddleware()
         middlewares = [
@@ -165,3 +181,51 @@ class MiddlewareResponseModyfingBreakTestCase(BaseMiddlewareTestCase):
     def test_both_middlewares_processed_response(self):
         self.call()
         self.assertEqual(self.countmiddleware.process_response_count, 2)
+
+
+class AlwaysReturningResponseMiddlewareTestCase(BaseMiddlewareTestCase):
+    def createAPI(self):
+        self.countmiddleware = CountMiddleware()
+        middlewares = [
+                self.countmiddleware,
+                BreakProcessingWithFalseMiddleware(),
+                self.countmiddleware
+                ]
+        return API('/', middlewares=middlewares)
+
+    def test_middleware_response_is_not_none(self):
+        resp = self.call()
+        self.assertIsNotNone(resp)
+
+    def test_that_returning_false_does_not_break_request_processing(self):
+        self.call()
+        self.assertEqual(self.countmiddleware.process_request_count, 2)
+
+
+class DeterminingResponseSerializerMiddlewareTestCase(BaseMiddlewareTestCase):
+    resource_content = 'OK'
+
+    def createAPI(self):
+        self.countmiddleware = CountMiddleware()
+        middlewares = [
+                self.countmiddleware,
+                ChangingContentMiddleware(),
+                self.countmiddleware
+                ]
+        return API('/', middlewares=middlewares)
+
+    def test_response_has_serializer_set(self):
+        resp = self.call()
+        self.assertTrue(hasattr(resp, 'serializer'))
+
+    def test_response_has_content_set(self):
+        resp = self.call()
+        self.assertTrue(hasattr(resp, 'content'))
+
+    def test_response_status_code_is_200OK(self):
+        resp = self.call()
+        self.assertEqual(resp.status, 200)
+
+    def test_response_content_was_changed(self):
+        resp = self.call()
+        self.assertEqual(resp.content, 'changed')

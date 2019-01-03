@@ -539,6 +539,39 @@ In our case it will be a Django ``User`` or ``AnonymousUser`` class instance.
     processing speed.
 
 
+Two methods are currently handled:
+* ``process_request(request, context)``,
+* ``process_response(request, response, context)``.
+  
+The order of calling looks like:
+
+* call ``process_request()`` in a declared order,
+* call service (a view),
+* call ``process_response()`` in a reversed order,
+* transform response to a representation, and serialize it.
+
+Both methods can return a new response instance.
+
+In case of returing a new response from ``process_request``,
+the request processing will be interrupted (a service/view 
+will not be called, too), but processing of responses will
+be continued.
+
+In case of returning a new response from ``process_response``,
+the response object will be replaced completely, and passed
+as a response argument in next calls. Alternatively a response
+instance can be just changed.
+
+A new response can be simply created using shortcuts defined
+in context, ie.:
+
+.. code:: python
+
+   class BadRequestMiddleware(object):
+      def process_response(self, request, response, context):
+         return context.BadRequest()
+
+
 Permissions
 ^^^^^^^^^^^
 
