@@ -1,6 +1,6 @@
 # restosaur
 
-![TravisBadge](https://travis-ci.org/restosaur/restosaur.svg?branch=0.7)
+![TravisBadge](https://travis-ci.org/restosaur/restosaur.svg?branch=feature/cleaning-api)
 ![WheelBadge](https://img.shields.io/pypi/wheel/restosaur.svg)
 ![PythonBadge](https://img.shields.io/pypi/pyversions/restosaur.svg)
 ![StatusBadge](https://img.shields.io/pypi/status/restosaur.svg)
@@ -28,7 +28,7 @@ You get a set of tools to build your real RESTful service.
 
 ## Documentation & development
 
-* RTD: http://restosaur.readthedocs.io/en/0.7/
+* Documentation: http://restosaur.readthedocs.io/en/latest/
 * Support & community: https://groups.google.com/forum/#!forum/restosaur-users 
 * Development: https://restosaur.slack.com/
 
