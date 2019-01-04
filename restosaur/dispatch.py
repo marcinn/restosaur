@@ -28,9 +28,9 @@ class DefaultResourceDispatcher(object):
             headers = {
                     'Allow': ', '.join(allowed_methods),
                 }
-            return resource._http_response(ctx.MethodNotAllowed({
+            return ctx.MethodNotAllowed({
                 'error': 'Method `%s` is not registered for resource `%s`' % (
-                    method, resource._path)}, headers=headers))
+                    method, resource._path)}, headers=headers)
 
         # Negotiate payload content type and store the best matching
         # result in ctx.request_content_type
@@ -67,12 +67,11 @@ class DefaultResourceDispatcher(object):
                         try:
                             ctx.body = ctx.validation.parse(ctx)
                         except serializers.DeserializationError as ex:
-                            resp = ctx.BadRequest(ex)
-                            return resource._http_response(resp)
+                            return ctx.BadRequest(ex)
             elif not ctx.content_length:
                 ctx.body = None
             else:
-                return resource._http_response(ctx.UnsupportedMediaType())
+                return ctx.UnsupportedMediaType()
 
         log.debug('Calling %s, %s, %s' % (method, args, kwargs))
 
@@ -80,10 +79,11 @@ class DefaultResourceDispatcher(object):
             callback = resource.get_callback(method, ctx.request_content_type)
             resp = self.do_call(callback, ctx, args=args, kwargs=kwargs)
         except Http404:
-            return resource._http_response(ctx.NotFound())
+            return ctx.NotFound()
         except Exception as ex:
             resp_cls = ctx.NotImplemented if isinstance(
                     ex, NotImplementedError) else ctx.InternalServerError
+            ex._excinfo = sys.exc_info()
             resp = resp_cls(ex)
             log.exception(
                     'Internal Server Error: %s', ctx.request.path,
@@ -93,13 +93,13 @@ class DefaultResourceDispatcher(object):
                         'context': ctx,
                     }
             )
-            return resource._http_response(resp)
+            return resp
         else:
             if not resp:
                 raise TypeError(
                         'Function `%s` does not return '
                         'a response object' % callback)
-            return resource._http_response(resp)
+            return resp
 
     def do_call(self, callback, ctx, args=None, kwargs=None):
         return callback(ctx, *args, **kwargs)
@@ -113,7 +113,7 @@ def resource_dispatcher_factory(
 
     def dispatch_request(request, *args, **kw):
         ctx = context_builder(api, resource, request)
-        bypass_resource_call = False
+        bypass_processing = False
         middlewares_called = []
 
         for middleware in api.middlewares:
@@ -124,25 +124,26 @@ def resource_dispatcher_factory(
             except AttributeError:
                 pass
             else:
-                if method(request, ctx) is False:
-                    bypass_resource_call = True
+                response = method(request, ctx)
+                if response:
+                    bypass_processing = True
                     break
 
-        if not bypass_resource_call:
+        if not bypass_processing:
             response = dispatcher.dispatch(ctx, args=args, kwargs=kw)
-        else:
-            response = None
 
-        middlewares_called.reverse()
+        response = response or None
 
-        for middleware in middlewares_called:
+        for middleware in reversed(api.middlewares):
             try:
                 method = middleware.process_response
             except AttributeError:
                 pass
             else:
-                if method(request, response, ctx) is False:
-                    break
+                new_response = method(request, response, ctx)
+                if new_response:
+                    response = new_response
 
+        response = resource._http_response(response)
         return response_builder(response)
     return dispatch_request

@@ -80,7 +80,7 @@ class Validation(object):
 
 def restosaur_exception_as_text(obj, ctx):
     if ctx.api.debug:
-        tb = sys.exc_info()[2]
+        tb = getattr(obj, '_excinfo', sys.exc_info())[2]
     else:
         tb = None
     output = u'\n'.join(
@@ -96,7 +96,7 @@ def restosaur_exception_as_dict(obj, ctx):
             })
 
     if ctx.api.debug:
-        tb = sys.exc_info()[2]
+        tb = getattr(obj, '_excinfo', sys.exc_info())[2]
 
         def stack_trace(x):
             return dict(zip(['file', 'line', 'fn', 'source'], x))

@@ -320,7 +320,10 @@ class ExceptionsHandlingTestCase(ResourceTestCase, SimpleTestCase):
         self.api = JsonAPI('/', debug=True)
         resp = self.call(self.exc_resource, 'get')
         resp_json = json.loads(response_content_as_text(resp))
-        entity = resp_json['traceback'][0]
+        traceback = resp_json['traceback']
+
+        self.assertTrue(len(traceback) > 0, 'No traceback entries')
+        entity = traceback[0]
 
         self.assertTrue('source' in entity)
         self.assertTrue('line' in entity)
