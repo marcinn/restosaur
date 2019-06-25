@@ -143,7 +143,9 @@ class MultipleChoicesResponse(RedirectionResponse):
 
 
 class MovedPermanentlyResponse(RedirectionResponse):
-    def __init__(self, context, data=None, headers=None):
+    def __init__(self, context, url, data=None, headers=None):
+        headers = headers or {}
+        headers['Location'] = url
         super(MovedPermanentlyResponse, self).__init__(
                 context, data=data, status=301, headers=headers)
 
@@ -155,9 +157,9 @@ class FoundResponse(RedirectionResponse):
 
 
 class SeeOtherResponse(RedirectionResponse):
-    def __init__(self, context, uri, data=None, headers=None):
+    def __init__(self, context, url, data=None, headers=None):
         headers = headers or {}
-        headers['Location'] = uri
+        headers['Location'] = url
         super(SeeOtherResponse, self).__init__(
                 context, data=data, status=303, headers=headers)
 
