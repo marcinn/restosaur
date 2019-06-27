@@ -290,6 +290,8 @@ class Resource(object):
 
         if model is None and qvalue is None:
             qvalue = 0.01
+        elif qvalue is None:
+            qvalue = self.api.get_default_qvalue(repr_key)
 
         obj = Representation(
                 vnd=vnd, content_type=content_type, serializer=serializer,

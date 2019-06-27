@@ -105,3 +105,47 @@ class DeprecatedResponseTestCase(BaseTestCase):
         resp = self.call(
                 self.collection, 'get', HTTP_ACCEPT='text/unsupported')
         self.assertEqual(resp.status_code, 406)
+
+
+class DefaultQValuesBaseTestCase(BaseTestCase):
+    default_qvalues = {}
+
+    def setUp(self):
+        super(DefaultQValuesBaseTestCase, self).setUp()
+
+        for key, value in self.default_qvalues.items():
+            self.api.set_default_qvalue(key, value)
+
+        @self.detail.representation(
+                model=dict, media='application/json')
+        def detail_default_app_json(obj, ctx):
+            return json.dumps(obj)
+
+        @self.detail.representation(
+                model=dict, media='application/vnd.v3+json')
+        def detail_default_v3_json(obj, ctx):
+            return json.dumps({'data': obj})
+
+
+class DefaultQValuesOlderPreferredTestCase(DefaultQValuesBaseTestCase):
+    default_qvalues = {
+            'application/json': 1,
+            'application/vnd.v3+json': 0.9,
+            }
+
+    def test_that_older_representation_is_returned_as_default(self):
+        resp = self.call(self.detail, 'get', HTTP_ACCEPT='*/*')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'application/json')
+
+
+class DefaultQValuesNewerPreferredTestCase(DefaultQValuesBaseTestCase):
+    default_qvalues = {
+            'application/json': 0.9,
+            'application/vnd.v3+json': 1,
+            }
+
+    def test_that_newer_representation_is_returned_as_default(self):
+        resp = self.call(self.detail, 'get', HTTP_ACCEPT='*/*')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'application/vnd.v3+json')

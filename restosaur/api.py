@@ -29,6 +29,7 @@ class BaseAPI(object):
         if path and path.startswith('/'):
             path = path[1:]
         self.path = path
+        self._mimetype_qvalues = {}
         self.debug = debug
         self.resources = []
         self.default_charset = default_charset or 'utf-8'
@@ -48,12 +49,21 @@ class BaseAPI(object):
         self.add_resources(obj)
         return obj
 
+    def set_default_qvalue(self, mimetype, qvalue):
+        self._mimetype_qvalues[mimetype] = qvalue
+
+    def get_default_qvalue(self, mimetype):
+        return self._mimetype_qvalues.get(mimetype)
+
     def add_representation(
             self, type_, content_type, vnd=None, qvalue=None,
             serializer=None, _transform_func=None):
 
         if type_ is None and qvalue is None:
             qvalue = 0.01
+        elif qvalue is None:
+            repr_key = join_content_type_with_vnd(content_type, vnd)
+            qvalue = self.get_default_qvalue(repr_key)
 
         representation = Representation(
             content_type=content_type, vnd=vnd,
@@ -169,7 +179,8 @@ def configure_json_api(api):
             _transform_func=restosaur_exception_dict_as_dict,
             qvalue=0.9)
     api.add_representation(
-            dict, content_type='application/json')
+            dict, content_type='application/json',
+            qvalue=0.1)
 
     # backward compatibility
 
