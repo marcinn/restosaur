@@ -1,7 +1,7 @@
 import functools
 import logging
 import warnings
-import urllib
+from six.moves.urllib.parse import urlencode
 
 from collections import OrderedDict, defaultdict
 
@@ -337,7 +337,7 @@ class Resource(object):
         final_query.update(query or {})
 
         if final_query:
-            uri += '?'+urllib.urlencode(final_query)
+            uri += '?'+urlencode(final_query)
 
         return uri
 
