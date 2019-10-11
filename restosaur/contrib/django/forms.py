@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 from django.forms import *  # NOQA
 
+import six
+
 
 class NullBooleanSelect(NullBooleanSelect):
     def __init__(self, *args, **kw):
@@ -28,7 +30,8 @@ class BooleanField(BooleanField):
 
     def to_python(self, value):
         """Returns a Python boolean object."""
-        if isinstance(value, basestring) and value.lower() in ('false', '0'):
+        if isinstance(
+                value, six.text_types) and value.lower() in ('false', '0'):
             value = False
         else:
             if value is not None:
