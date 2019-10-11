@@ -31,7 +31,7 @@ class BooleanField(BooleanField):
     def to_python(self, value):
         """Returns a Python boolean object."""
         if isinstance(
-                value, six.text_types) and value.lower() in ('false', '0'):
+                value, six.string_types) and value.lower() in ('false', '0'):
             value = False
         else:
             if value is not None:
