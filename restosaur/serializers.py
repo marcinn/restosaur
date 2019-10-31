@@ -23,11 +23,13 @@ class SerializationError(SerializeDeserializeError):
     pass
 
 
+_datetimes = (
+    datetime.datetime, datetime.date, datetime.time)
+
+
 class DefaultRestfulEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
-        elif isinstance(obj, datetime.date):
+        if isinstance(obj, _datetimes):
             return obj.isoformat()
         elif isinstance(obj, datetime.timedelta):
             return (datetime.datetime.min + obj).time().isoformat()
