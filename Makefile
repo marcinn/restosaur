@@ -7,10 +7,10 @@ env:
 package:
 	@rm -rf dist/
 	@mkdir dist
-	@python setup.py clean sdist bdist_wheel
-
+	@source .env/bin/activate && python setup.py clean sdist bdist_wheel
+	@source .env3/bin/activate && python setup.py bdist_wheel
 
 upload:
-	twine upload dist/*
+	twine upload --skip-existing dist/*
 
 
