@@ -147,6 +147,5 @@ def resource_dispatcher_factory(
                 if new_response:
                     response = new_response
 
-        response = resource._http_response(response)
-        return response_builder(response)
+        return response_builder(response, resource)
     return dispatch_request

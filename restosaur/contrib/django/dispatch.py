@@ -45,12 +45,14 @@ def build_context(api, resource, request):
             content_type=content_type, content_length=content_length)
 
 
-def http_response_builder(response):
+def http_response_builder(response, resource):
     if response is None:
         return HttpResponse()
 
     if isinstance(response, HttpResponseBase):
         return response
+
+    response = resource._http_response(response)
 
     if response.serializer:
         content = response.serializer.dumps(response.context, response.content)

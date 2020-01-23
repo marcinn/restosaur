@@ -27,14 +27,19 @@ def build_context(api, resource, request):
             content_length=request.content_length)
 
 
-def build_http_response(app, response):
+def build_http_response(app, response, resource):
     if response is None:
         return flask.Response()
+
+    if isinstance(response, flask.Response):
+        return response
+
+    response = resource._http_response(response)
+
+    if response.serializer:
+        content = response.serializer.dumps(response.content)
     else:
-        if response.serializer:
-            content = response.serializer.dumps(response.content)
-        else:
-            content = ''
+        content = ''
 
         http_resp = app.make_response(
                 (content, response.status, response.headers))
@@ -47,6 +52,9 @@ def register_api(api, app):
     Bind the `api` instance to the Flask `app` application
     """
 
+    def response_builder(response, resource):
+        return build_http_response(app, response, resource)
+
     api.debug = app.config['DEBUG']
 
     for resource in api.resources:
@@ -56,8 +64,7 @@ def register_api(api, app):
             path = '/'+path
 
         dispatcher = resource_dispatcher_factory(
-                api, resource, functools.partial(build_http_response, app),
-                context_builder=build_context)
+            api, resource, response_builder, context_builder=build_context)
 
         endpoint = 'restosaour_resource_%s' % id(resource)
 

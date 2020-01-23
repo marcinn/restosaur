@@ -64,8 +64,8 @@ class BaseMiddlewareTestCase(unittest.TestCase):
 
         resource = resource or self.resource
 
-        def response_builder(response):
-            return response
+        def response_builder(response, resource):
+            return resource._http_response(response)
 
         def context_builder(api, resource, request):
             return api.make_context(**request)
