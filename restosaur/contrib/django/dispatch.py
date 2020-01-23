@@ -1,4 +1,5 @@
 from django.http import HttpResponse, Http404
+from django.http.response import HttpResponseBase
 
 from restosaur.context import QueryDict
 from restosaur.headers import normalize_header_name
@@ -48,7 +49,7 @@ def http_response_builder(response):
     if response is None:
         return HttpResponse()
 
-    if isinstance(response, HttpResponse):
+    if isinstance(response, HttpResponseBase):
         return response
 
     if response.serializer:
