@@ -7,7 +7,6 @@ env:
   - DJANGO_VERSION=2.2
   - DJANGO_VERSION=3.0
   - DJANGO_VERSION=3.1
-  - DJANGO_VERSION=3.2
 python:
   - "2.7"
   - "3.5"
@@ -23,8 +22,11 @@ matrix:
       env: DJANGO_VERSION=3.0
     - python: "2.7"
       env: DJANGO_VERSION=3.1
-    - python: "2.7"
-      env: DJANGO_VERSION=3.2
+    - python: "3.5"
+      env: DJANGO_VERSION=3.0
+    - python: "3.5"
+      env: DJANGO_VERSION=3.1
+    - python: "3.5"
 
 install:
   - pip install -r requirements.txt
