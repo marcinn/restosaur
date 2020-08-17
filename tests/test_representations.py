@@ -96,6 +96,12 @@ class ErrorsContentNegotiationTestCase(BaseTestCase):
                 HTTP_ACCEPT='text/unsupported')
         self.assertEqual(resp['Content-Type'], 'text/plain')
 
+    def test_returning_plaintex_error_message_for_not_accepted_multiple_types(self):  # NOQA
+        resp = self.call(
+                self.detail, 'post', content_type='test/error500',
+                HTTP_ACCEPT='text/unsupported,text/unsupported2;q=0.9')
+        self.assertEqual(resp['Content-Type'], 'text/plain')
+
 
 class DeprecatedResponseTestCase(BaseTestCase):
     def test_returning_406_when_used_base_Response_class(self):

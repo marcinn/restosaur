@@ -13,6 +13,7 @@ from .utils import (
         join_content_type_with_vnd,
         split_mediatype,
         get_types_to_check)
+from .headers import parse_accept_header
 from . import responses, urltemplate, serializers, deprecation
 
 
@@ -134,8 +135,10 @@ class Resource(object):
                     accepting = ['*/*;q=0.1']
 
                     if accept:
-                        media_type, media_subtype = accept.split('/')
-                        accepting.insert(0, '%s/*;q=1' % media_type)
+                        accept_parts = parse_accept_header(accept)
+                        for part in accept_parts:
+                            media_type, media_subtype = part[0].split('/')
+                            accepting.insert(0, '%s/*;q=1' % media_type)
 
                     try:
                         representation = self._match_representation(
