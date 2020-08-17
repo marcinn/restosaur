@@ -1,3 +1,8 @@
+from functools import cmp_to_key
+
+
+def compare(a, b):
+    return (a > b)-(a < b)
 
 
 def parse_accept_header(accept):
@@ -23,7 +28,7 @@ def parse_accept_header(accept):
             if key == "q":
                 q = float(value)
         result.append((media_type, vnd, q))
-    result.sort(lambda x, y: -cmp(x[2], y[2]))
+    result.sort(key=cmp_to_key(lambda x, y: -compare(x[2], y[2])))
     return result
 
 
