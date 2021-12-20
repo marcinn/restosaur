@@ -1,7 +1,8 @@
 import email
 import functools
+
 import six
-import times
+import times2 as times
 
 from .datastructures import QueryDict
 
@@ -15,11 +16,10 @@ try:
 except ImportError:
     from urllib.parse import urlencode
 
-
+from . import responses
 from .loading import load_resource
 from .representations import match_representation
 from .utils import force_bytes
-from . import responses
 
 
 def parse_http_date(header, headers):
@@ -33,11 +33,26 @@ def parse_http_date(header, headers):
 
 class Context(object):
     def __init__(
-            self, api, host='localhost', path='/', method='GET',
-            parameters=None, body=None, data=None, files=None, raw=None,
-            extra=None, headers=None, charset=None, secure=False,
-            encoding='utf-8', resource=None, request=None, content_length=None,
-            content_type=None):
+        self,
+        api,
+        host="localhost",
+        path="/",
+        method="GET",
+        parameters=None,
+        body=None,
+        data=None,
+        files=None,
+        raw=None,
+        extra=None,
+        headers=None,
+        charset=None,
+        secure=False,
+        encoding="utf-8",
+        resource=None,
+        request=None,
+        content_length=None,
+        content_type=None,
+    ):
         self.method = method
         self.api = api
         self.charset = charset
@@ -46,8 +61,9 @@ class Context(object):
         self.request = request
         self.encoding = encoding
         self.secure = secure
-        self.host = host
-        self.path = path
+        self.host = (host or "").strip("/")
+        # self.path = self.api.path_re.sub("", path)
+        self.path = (path or "").lstrip("/")
         self.body = body
         self.raw = raw
         self.parameters = QueryDict(parameters)  # GET
@@ -67,33 +83,30 @@ class Context(object):
         (including query string) will be used and extended by
         optional `parameters`.
         """
+        path = (path or "").lstrip("/")
 
         def build_uri(path):
-            current = 'http%s://%s%s' % (
-                    's' if self.secure else '', self.host, self.path)
-            return urlparse.urljoin(current, path)
+            return "http%s://%s%s%s/%s" % (
+                "s" if self.secure else "",
+                self.host,
+                self.api.force_script_name,
+                self.api.path,
+                path or self.path or "",
+            )
 
         params = QueryDict()
-        if path:
-            full_path = u'/'.join(
-                    filter(None, (self.api.path+path).split('/')))
-            if path.endswith('/'):
-                full_path += '/'
-            uri = build_uri('/'+full_path)
-        else:
+        uri = build_uri(path)
+        if not path:
             params.update(self.parameters.items())
-            uri = build_uri(self.path)
 
         # todo: change to internal restosaur settings
         enc = self.encoding
 
         params.update(parameters or {})
-        params = list(map(
-                lambda x: (x[0], force_bytes(x[1], enc)),
-                params.items()))
+        params = list(map(lambda x: (x[0], force_bytes(x[1], enc)), params.items()))
 
         if params:
-            return '%s?%s' % (uri, urlencode(params))
+            return "%s?%s" % (uri, urlencode(params))
         else:
             return uri
 
@@ -104,20 +117,17 @@ class Context(object):
         representation = self.match_representation(model)
         return representation._transform_func(model, self)
 
-    def url(
-            self, model=None, resource=None, name=None,
-            parameters=None, query=None):
+    def url(self, model=None, resource=None, name=None, parameters=None, query=None):
         """
         Create URL for model named link or resource
         with optional query parameters
         """
 
         if model and resource:
-            raise ValueError('Provide `model` or `resource`. Both set.')
+            raise ValueError("Provide `model` or `resource`. Both set.")
 
         if model:
-            return self.model_url(
-                    model, name=name, parameters=parameters, query=query)
+            return self.model_url(model, name=name, parameters=parameters, query=query)
 
         if name:
             raise ValueError("Named link must be used with model")
@@ -125,8 +135,7 @@ class Context(object):
         if not resource:
             raise ValueError("Resource or model must is required")
 
-        return self.resource_url(
-                resource, parameters=parameters, query=query)
+        return self.resource_url(resource, parameters=parameters, query=query)
 
     def self_url(self, query=None, append_query=False):
         """
@@ -153,7 +162,8 @@ class Context(object):
         for path template.
         """
         return self.api.linked_url(
-                self, model, name=name, parameters=parameters, query=query)
+            self, model, name=name, parameters=parameters, query=query
+        )
 
     def resource_url(self, resource, parameters=None, query=None):
         """
@@ -171,11 +181,14 @@ class Context(object):
         Returns True if `dt` is newer than `If-Modified-Since`,
         False otherwise.
         """
-        if_modified_since = parse_http_date('if-modified-since', self.headers)
+        if_modified_since = parse_http_date("if-modified-since", self.headers)
+
+        dt = times.make_aware(dt, tz="UTC")  # assume tz=utc if not set
 
         if if_modified_since:
-            return times.to_unix(
-                dt.replace(microsecond=0)) > times.to_unix(if_modified_since)
+            return (times.to_unix(dt.replace(microsecond=0))) > (
+                times.to_unix(if_modified_since)
+            )
 
         return True
 
@@ -188,8 +201,9 @@ class Context(object):
 
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
-            args = list(args)+[self]
+            args = list(args) + [self]
             return func(*args, **kwargs)
+
         return wrapped
 
     # response factories
@@ -256,6 +270,7 @@ class Context(object):
 
     def InternalServerError(self, *args, **kwargs):
         return responses.InternalErrorResponse(self, *args, **kwargs)
+
     InternalError = InternalServerError
 
     def Entity(self, *args, **kwargs):  # deprecated, 200

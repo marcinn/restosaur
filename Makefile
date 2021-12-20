@@ -15,4 +15,7 @@ upload: package
 
 
 tests:
-	@tox -q
+	@tox -p all
+
+tests-verbose:
+	@tox -v

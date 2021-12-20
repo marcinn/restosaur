@@ -17,7 +17,7 @@ class DjangoAppBasedAutodiscoverTestCase(SimpleTestCase):
                 INSTALLED_APPS=['restosaur', 'tests.artest']):
             from .urls_autoregister import api
             self.assertEqual(len(api.resources), 1)
-            self.assertEqual(api.resources[0].path, '/')
+            self.assertEqual(api.resources[0].path, '')
 
     @unittest.skipIf(
             django.VERSION < (1, 7, 0),

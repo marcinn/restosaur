@@ -1,4 +1,4 @@
-import times
+import times2 as times
 import warnings
 
 from email.utils import formatdate

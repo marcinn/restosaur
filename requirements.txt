@@ -1,5 +1,2 @@
 python-mimeparse
-times>=0.7
-nose
-ipdb
-ipython
+times2==0.8

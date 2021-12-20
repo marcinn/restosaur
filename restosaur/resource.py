@@ -45,7 +45,7 @@ class Resource(object):
             default_content_type='application/json',
             link_model=None, link_name=None):
         self._api = api
-        self._path = path
+        self._path = (path or "").strip("/")
         self._required_parameters = urltemplate.get_parameters(self._path)
         self._callbacks = defaultdict(dict)
         self._registered_methods = set()
