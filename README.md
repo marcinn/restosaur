@@ -1,6 +1,6 @@
 # restosaur
 
-![TravisBadge](https://travis-ci.org/restosaur/restosaur.svg?branch=0.7)
+![Tests](https://github.com/restosaur/restosaur/actions/workflows/django.yml/badge.svg?branch=0.7)
 ![WheelBadge](https://img.shields.io/pypi/wheel/restosaur.svg)
 ![PythonBadge](https://img.shields.io/pypi/pyversions/restosaur.svg)
 ![StatusBadge](https://img.shields.io/pypi/status/restosaur.svg)
@@ -159,6 +159,7 @@ And browse your posts via http://localhost:8000/posts
 * Django 1.x (deprecated)
 * Django 2.x
 * Django 3.x
+* Django 4.x
 
 * Python 2.7 (deprecated)
 * Python 3.4
@@ -166,6 +167,7 @@ And browse your posts via http://localhost:8000/posts
 * Python 3.6
 * Python 3.7
 * Python 3.8
+* Python 3.9
 
 ## Roadmap
 
