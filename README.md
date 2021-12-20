@@ -1,6 +1,6 @@
 # restosaur
 
-![TravisBadge](https://travis-ci.org/restosaur/restosaur.svg?branch=0.7)
+![Tests](https://github.com/restosaur/restosaur/actions/workflows/django.yml/badge.svg?branch=0.7)
 ![WheelBadge](https://img.shields.io/pypi/wheel/restosaur.svg)
 ![PythonBadge](https://img.shields.io/pypi/pyversions/restosaur.svg)
 ![StatusBadge](https://img.shields.io/pypi/status/restosaur.svg)
