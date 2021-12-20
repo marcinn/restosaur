@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 
 from .context import Context
@@ -27,11 +28,10 @@ class BaseAPI(object):
         context_class=None,
         default_charset=None,
         debug=False,
-        force_script_name=None,
     ):
         _path = (path or "").strip("/")
         self.path = "/%s" % _path if _path else ""
-        self.force_script_name = force_script_name or ""
+        self.path_re = re.compile(r"^%s\/" % self.path)
         self._mimetype_qvalues = {}
         self.debug = debug
         self.resources = []

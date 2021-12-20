@@ -53,15 +53,10 @@ class API(BaseAPI):
 
     def get_urls(self):
         try:
-            from django.conf.urls import include, patterns, url
+            from django.urls import include
+            from django.urls import re_path as url
         except ImportError:
-            try:
-                from django.conf.urls import include, url
-            except ImportError:
-                from django.urls import path as url
-
-            def patterns(x, *urls):
-                return list(urls)
+            from django.conf.urls import include, url
 
         from django.views.decorators.csrf import csrf_exempt
 
@@ -77,20 +72,18 @@ class API(BaseAPI):
 
             urls.append(
                 url(
-                    r"%s" % (path or ("/" if api_prefix else "")),
+                    r"^%s$" % path,
                     csrf_exempt(resource_dispatcher_factory(self, resource)),
                 )
             )
 
-        return [url("%s" % api_prefix, include(patterns("", *urls)))]
+        if api_prefix:
+            return [url(r"^%s/" % api_prefix, include(urls))]
+        else:
+            return urls
 
     def urlpatterns(self):
-        try:
-            from django.conf.urls import include, patterns
-        except ImportError:
-            return self.get_urls()
-        else:
-            return patterns("", (r"^", include(self.get_urls())))
+        return self.get_urls()
 
     def autodiscover(self, *args, **kw):
         """

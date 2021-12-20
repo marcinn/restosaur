@@ -63,7 +63,7 @@ class Context(object):
         self.secure = secure
         self.host = (host or "").strip("/")
         # self.path = self.api.path_re.sub("", path)
-        self.path = (path or "").lstrip("/")
+        self.path = self.api.path_re.sub("", (path or ""), count=1).lstrip("/")
         self.body = body
         self.raw = raw
         self.parameters = QueryDict(parameters)  # GET
@@ -86,10 +86,9 @@ class Context(object):
         path = (path or "").lstrip("/")
 
         def build_uri(path):
-            return "http%s://%s%s%s/%s" % (
+            return "http%s://%s%s/%s" % (
                 "s" if self.secure else "",
                 self.host,
-                self.api.force_script_name,
                 self.api.path,
                 path or self.path or "",
             )

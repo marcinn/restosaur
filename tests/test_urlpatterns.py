@@ -28,6 +28,24 @@ class URLPatternsTestCase(SimpleTestCase):
             resp = c.get("/api/")
             self.assertEqual(resp.status_code, 200)
 
+    def test_successful_calling_some_resoutce_with_path_prefix(self):
+        c = Client()
+
+        with self.settings(ROOT_URLCONF="tests.urls_root_with_prefix"):
+            resp = c.get("/api/some")
+            resp_json = json.loads(response_content_as_text(resp))
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp_json["some"], "ok")
+
+    def test_successful_calling_some_subresoutce_with_path_prefix(self):
+        c = Client()
+
+        with self.settings(ROOT_URLCONF="tests.urls_root_with_prefix"):
+            resp = c.get("/api/some/sub")
+            resp_json = json.loads(response_content_as_text(resp))
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp_json["some/sub"], "ok")
+
     def test_that_api_trailing_prefix_does_not_affect_urlresolver(self):
         c = Client()
 
