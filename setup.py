@@ -6,7 +6,7 @@ README_PATH = os.path.join(os.path.dirname(__file__), "README.md")
 
 setup(
     name="restosaur",
-    version="0.7.0b18",
+    version="0.7.0b19",
     description="Framework independent RESTful library",
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -33,7 +33,7 @@ setup(
     author="Marcin Nowak",
     author_email="marcin.j.nowak@gmail.com",
     url="https://github.com/marcinn/restosaur",
-    install_requires=["times2==0.8", "six"],
+    install_requires=["times2==0.9", "six"],
     keywords="web rest python django",
     packages=find_packages("."),
     include_package_data=True,

@@ -1,2 +1,2 @@
 python-mimeparse
-times2==0.8
+times2==0.9
