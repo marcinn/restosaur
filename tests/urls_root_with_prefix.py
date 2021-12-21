@@ -18,7 +18,13 @@ def some_view(ctx):
 
 @subsome.get()
 def subsome_view(ctx):
-    return ctx.Response({"some/sub": "ok"})
+    return ctx.Response(
+        {
+            "some/sub": "ok",
+            "root": ctx.url_for(root),
+            "sub": ctx.url_for(subsome),
+        }
+    )
 
 
 urlpatterns = api.urlpatterns()
