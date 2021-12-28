@@ -63,7 +63,6 @@ class Context(object):
         self.secure = secure
         self.host = (host or "").strip("/")
         self.path = self.api.path_re.sub("", (path or ""), count=1).lstrip("/")
-        print(path, self.path, self.api.path_re)
         self.body = body
         self.raw = raw
         self.parameters = QueryDict(parameters)  # GET
