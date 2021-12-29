@@ -7,9 +7,9 @@ import times2 as times
 from .datastructures import QueryDict
 
 try:
-    import urlparse
+    from urllib.parse import urlparse
 except ImportError:
-    from urllib import parse as urlparse
+    from urlparse import urlparse
 
 try:
     from urllib import urlencode
@@ -62,9 +62,9 @@ class Context(object):
         self.encoding = encoding
         self.secure = secure
         self.host = (host or "").strip("/")
-        self.path = self.api.path_re.sub("", (path or ""), count=1).lstrip("/")
         self.body = body
         self.raw = raw
+        self.path = path
         self.parameters = QueryDict(parameters)  # GET
         self.data = data or {}  # POST
         self.files = files or {}  # FILES
@@ -72,6 +72,15 @@ class Context(object):
         self.content_type = content_type
         self.content_length = content_length
         self.extra = extra or {}
+
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, path):
+        parsed = urlparse(path)
+        self._path = self.api.path_re.sub("", (parsed.path or ""), count=1).lstrip("/")
 
     def build_absolute_uri(self, path=None, parameters=None):
         """
