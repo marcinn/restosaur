@@ -91,6 +91,7 @@ class Context(object):
         (including query string) will be used and extended by
         optional `parameters`.
         """
+        _requested_path = path
         path = ((path or "") if path is not None else self.path).lstrip("/")
 
         def build_uri(path):
@@ -104,7 +105,7 @@ class Context(object):
 
         params = QueryDict()
         uri = build_uri(path)
-        if not path:
+        if not _requested_path:
             params.update(self.parameters.items())
 
         # todo: change to internal restosaur settings

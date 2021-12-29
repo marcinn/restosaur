@@ -4,6 +4,11 @@ from __future__ import unicode_literals
 import datetime
 import unittest
 
+try:
+    from urllib.parse import parse_qs, urlparse
+except ImportError:
+    from urlparse import urlparse, parse_qs
+
 import pytz
 import six
 from restosaur import API, responses
@@ -36,6 +41,12 @@ class ContextTestCase(unittest.TestCase):
         self.ctx = create_context("get", "", lambda ctx: None, api=self.api)
         self.ctx2 = create_context("get", "", lambda ctx: None, api=self.api2)
         self.ctx3 = create_context("get", "", lambda ctx: None, api=self.api3)
+        self.ctx4 = create_context(
+            "get", "", lambda ctx: None, api=self.api3, parameters={"foo": "bar"}
+        )
+        self.ctx5 = create_context(
+            "get", "some", lambda ctx: None, api=self.api3, parameters={"foo": "bar"}
+        )
 
     def test_deserialized_property(self):
         ctx = self.factory("get", "/test/", lambda ctx: None, body="body")
@@ -169,6 +180,37 @@ class TestContextBuilidURI(ContextTestCase):
         ctx = build_context(self.api, res, rq)
         self.assertTrue("baz" in ctx.parameters["bar"])
         self.assertTrue("qux" in ctx.parameters["bar"])
+
+    def test_preserving_query_parameters_when_building_uri_without_args(self):
+        uri = self.ctx4.build_absolute_uri()
+        self.assertEqual(uri, "http://testserver/webapi/?foo=bar")
+
+    def test_preserving_query_parameters_when_building_uri_without_args_and_path(self):
+        uri = self.ctx5.build_absolute_uri()
+        self.assertEqual(uri, "http://testserver/webapi/some?foo=bar")
+
+    def test_not_preserving_query_parameters_when_building_uri_with_overriden_path(
+        self,
+    ):
+        uri = self.ctx5.build_absolute_uri(path="other")
+        self.assertEqual(uri, "http://testserver/webapi/other")
+        uri = self.ctx4.build_absolute_uri(path="other")
+        self.assertEqual(uri, "http://testserver/webapi/other")
+
+    def test_preserving_query_parameters_when_building_uri_with_overriden_parameters_but_not_path(
+        self,
+    ):
+        p = urlparse(self.ctx5.build_absolute_uri(parameters={"bar": "baz"}))
+        q = parse_qs(p.query)
+        self.assertEqual(p.path, "/webapi/some")
+        self.assertEqual(q.get("foo"), ["bar"])
+        self.assertEqual(q.get("bar"), ["baz"])
+
+        p = urlparse(self.ctx4.build_absolute_uri(parameters={"bar": "baz"}))
+        q = parse_qs(p.query)
+        self.assertEqual(p.path, "/webapi/")
+        self.assertEqual(q.get("foo"), ["bar"])
+        self.assertEqual(q.get("bar"), ["baz"])
 
 
 class TestContextIfModifiedSince(ContextTestCase):
