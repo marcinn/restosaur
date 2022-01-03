@@ -14,7 +14,7 @@ from .utils import autodiscover
 
 
 def to_django_urlpattern(path):
-    return RE_PARAMS.sub("/(?P<\\2>[^/]+)", path)
+    return RE_PARAMS.sub("(?P<\\2>[^/]+)", path)
 
 
 def django_html_exception(obj, ctx):

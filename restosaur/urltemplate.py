@@ -1,6 +1,6 @@
 import re
 
-RE_PARAMS = re.compile('(/:([a-zA-Z_]+))')
+RE_PARAMS = re.compile("(:([a-zA-Z_]+))")
 
 
 def to_url(urltemplate, params, strict=False):
@@ -10,7 +10,7 @@ def to_url(urltemplate, params, strict=False):
     if params_to_replace:
         for needle, key in params_to_replace:
             try:
-                uri = uri.replace(needle, '/%s' % params[key])
+                uri = uri.replace(needle, "%s" % params[key])
             except KeyError:
                 if strict:
                     raise
@@ -27,5 +27,5 @@ def remove_parameters(urltemplate):
 
     params_to_replace = RE_PARAMS.findall(urltemplate)
     for needle, key in params_to_replace:
-        uri = uri.replace(needle, '')
+        uri = uri.replace(needle, "")
     return uri
