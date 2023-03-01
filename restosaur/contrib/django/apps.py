@@ -2,7 +2,7 @@ from django.apps import AppConfig
 
 
 class RestosaurAppConfig(AppConfig):
-    name = 'restosaur'
+    name = 'restosaur.contrib.django'
     verbose_name = 'Restosaur'
 
     def ready(self):

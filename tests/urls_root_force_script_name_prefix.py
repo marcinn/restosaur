@@ -1,5 +1,5 @@
 from django.conf import settings
-from restosaur.contrib.django import API
+from restosaur.contrib.django.api import API
 
 api = API("api", force_script_name=settings.FORCE_SCRIPT_NAME)
 root = api.resource("/")

@@ -1,4 +1,4 @@
-from restosaur.contrib.django import API
+from restosaur.contrib.django.api import API
 
 api = API("api")
 root = api.resource("/")

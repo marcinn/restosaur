@@ -3,7 +3,7 @@ import re
 import unittest
 
 from restosaur import API
-from restosaur.contrib.django import API as DjangoAPI
+from restosaur.contrib.django.api import API as DjangoAPI
 from restosaur.contrib.django.dispatch import resource_dispatcher_factory
 
 from .utils import response_content_as_text

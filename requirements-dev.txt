@@ -4,3 +4,5 @@ flask
 nose
 ipdb
 ipython
+wheel
+twine

@@ -14,7 +14,7 @@ class DjangoAppBasedAutodiscoverTestCase(SimpleTestCase):
 
         with self.settings(
                 ROOT_URLCONF='tests.urls_autoregister',
-                INSTALLED_APPS=['restosaur', 'tests.artest']):
+                INSTALLED_APPS=['restosaur.contrib.django', 'tests.artest']):
             from .urls_autoregister import api
             self.assertEqual(len(api.resources), 1)
             self.assertEqual(api.resources[0].path, '')
@@ -27,7 +27,7 @@ class DjangoAppBasedAutodiscoverTestCase(SimpleTestCase):
 
         with self.settings(
                 ROOT_URLCONF='tests.urls_autoregister',
-                INSTALLED_APPS=['restosaur', 'tests.artest']):
+                INSTALLED_APPS=['restosaur.contrib.django', 'tests.artest']):
             resp = c.get('/')
             self.assertEqual(resp.status_code, 200)
 
@@ -40,5 +40,5 @@ class DjangoAppBasedAutodiscoverTestCase(SimpleTestCase):
 
         with self.settings(
                 ROOT_URLCONF='tests.urls_autoregister',
-                INSTALLED_APPS=['restosaur', 'tests.artest']):
+                INSTALLED_APPS=['restosaur.contrib.django', 'tests.artest']):
             self.assertTrue(apps.is_installed('tests.artest'))
