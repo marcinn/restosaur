@@ -1,7 +1,7 @@
-import collections
+import collections.abc
 
 
-class MultiValueDict(collections.MutableMapping):
+class MultiValueDict(collections.abc.MutableMapping):
     """
     QueryDict acts like a plain `dict` type, but it handles
     automatially multiple values for same key.
