@@ -4,3 +4,6 @@ flask
 pynose == 1.5.2
 ipdb
 ipython
+pip
+wheel
+setuptools
