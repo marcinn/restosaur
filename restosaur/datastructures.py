@@ -1,7 +1,12 @@
 import collections
 
+try:
+    from collections import MutableMapping
+except ImportError:
+    from collections.abc import MutableMapping
 
-class MultiValueDict(collections.MutableMapping):
+
+class MultiValueDict(MutableMapping):
     """
     QueryDict acts like a plain `dict` type, but it handles
     automatially multiple values for same key.
@@ -72,8 +77,7 @@ class MultiValueDict(collections.MutableMapping):
         return self.update({key: value})
 
     def __getitem__(self, key):
-        return self._data[key][-1]\
-                if len(self._data[key]) < 2 else self._data[key]
+        return self._data[key][-1] if len(self._data[key]) < 2 else self._data[key]
 
     def __delitem__(self, key):
         del self._data[key]

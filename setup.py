@@ -6,7 +6,7 @@ README_PATH = os.path.join(os.path.dirname(__file__), "README.md")
 
 setup(
     name="restosaur",
-    version="0.7.0b24",
+    version="0.7.0b25",
     description="Framework independent RESTful library",
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -26,6 +26,9 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Intended Audience :: Developers",

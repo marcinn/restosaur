@@ -34,6 +34,8 @@ class API(BaseAPI):
     def __init__(self, *args, **kw):
         from django.conf import settings
 
+        from .dispatch import resource_dispatcher_factory
+
         charset = kw.pop("default_charset", None) or settings.DEFAULT_CHARSET
         debug = kw.pop("debug", settings.DEBUG)
 
@@ -44,12 +46,19 @@ class API(BaseAPI):
 
         super(API, self).__init__(*args, **kw)
 
+        self._resource_dispatcher_factory = kw.pop(
+            "resource_dispatcher_factory", resource_dispatcher_factory
+        )
+
         self.add_representation(
             ExceptionRepresentation,
             content_type="text/html",
             _transform_func=django_html_exception,
             qvalue=0.2,
         )
+
+    def _get_url_dispatcher(self, path, resource):
+        return self._resource_dispatcher_factory(self, resource)
 
     def get_urls(self):
         try:
@@ -59,8 +68,6 @@ class API(BaseAPI):
             from django.conf.urls import include, url
 
         from django.views.decorators.csrf import csrf_exempt
-
-        from .dispatch import resource_dispatcher_factory
 
         urls = []
         api_prefix = self.path.strip("/")
@@ -73,7 +80,7 @@ class API(BaseAPI):
             urls.append(
                 url(
                     r"^%s$" % path,
-                    csrf_exempt(resource_dispatcher_factory(self, resource)),
+                    csrf_exempt(self._get_url_dispatcher(path, resource)),
                 )
             )
 

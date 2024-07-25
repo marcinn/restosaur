@@ -1,6 +1,6 @@
 django
 tox
 flask
-nose
+pynose == 1.5.2
 ipdb
 ipython
