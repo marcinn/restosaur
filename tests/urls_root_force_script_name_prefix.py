@@ -1,0 +1,31 @@
+from django.conf import settings
+from restosaur.contrib.django import API
+
+api = API("api", force_script_name=settings.FORCE_SCRIPT_NAME)
+root = api.resource("/")
+some = api.resource("some")
+subsome = api.resource("some/sub")
+
+
+@root.get()
+def root_view(ctx):
+    return ctx.Response({"root": "ok"})
+
+
+@some.get()
+def some_view(ctx):
+    return ctx.Response({"some": "ok"})
+
+
+@subsome.get()
+def subsome_view(ctx):
+    return ctx.Response(
+        {
+            "some/sub": "ok",
+            "root": ctx.url_for(root),
+            "sub": ctx.url_for(subsome),
+        }
+    )
+
+
+urlpatterns = api.urlpatterns()

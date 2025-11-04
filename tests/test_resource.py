@@ -1,12 +1,11 @@
 import unittest
-import datetime
 import json
 
-from restosaur import API, responses
-from restosaur.resource import Resource
-from restosaur.dispatch import resource_dispatcher_factory
+from restosaur import API
+from restosaur.contrib.django.dispatch import resource_dispatcher_factory
 
 from django.test import SimpleTestCase
+from .utils import response_content_as_text
 
 
 class ResourceTestCase(unittest.TestCase):
@@ -31,7 +30,11 @@ class DefaultRepresentationTestCase(ResourceTestCase):
 
         @self.entity.get()
         def entity_GET(ctx):
-            return ctx.Entity({'some':'test'})
+            return ctx.Entity({'some': 'test'})
+
+        @self.entity.post()
+        def entity_POST(ctx):
+            return ctx.Entity({'some': 'test'})
 
     def test_successful_getting_200_status_code(self):
         resp = self.call(self.entity, 'get')
@@ -39,24 +42,51 @@ class DefaultRepresentationTestCase(ResourceTestCase):
 
     def test_returning_valid_content_type(self):
         resp = self.call(self.entity, 'get')
-        self.assertEqual(resp['Content-Type'], 'application/json')
+        self.assertEqual(
+                resp['Content-Type'], self.entity._default_content_type)
 
     def test_getting_valid_entity_content(self):
         resp = self.call(self.entity, 'get')
-        resp_json = json.loads(resp.content)
+        resp_json = json.loads(response_content_as_text(resp))
         self.assertTrue(resp_json['some'] == 'test')
 
-    def test_raising_not_acceptable_for_unsupported_representation(self):
-        resp = self.call(self.entity, 'get', HTTP_ACCEPT='application/vnd.not-defined+json')
-        self.assertEqual(resp.status_code, 406)
+    def test_POST_status_code_200(self):
+        resp = self.call(self.entity, 'post', content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
 
-    def test_raising_not_acceptable_for_unsupported_serializer(self):
-        resp = self.call(self.entity, 'get', HTTP_ACCEPT='application/eggsandmeat')
-        self.assertEqual(resp.status_code, 406)
-
-    def test_returning_fallback_application_json_content_type_for_unsupported_serializer(self):
-        resp = self.call(self.entity, 'get', HTTP_ACCEPT='application/eggsandmeat')
+    def test_POST_valid_default_representation_content_type(self):
+        resp = self.call(self.entity, 'post', HTTP_ACCEPT='*/*')
         self.assertEqual(resp['Content-Type'], 'application/json')
+
+    def test_POST_resulting_representation_content_type(self):
+        resp = self.call(self.entity, 'post', HTTP_ACCEPT='application/json')
+        self.assertEqual(resp['Content-Type'], 'application/json')
+
+    def test_POST_empty_content_when_no_representation_can_be_negotiated(self):
+        resp = self.call(
+                self.entity, 'post', HTTP_ACCEPT='application/eggsandmeat')
+        self.assertEqual(resp.content, b'')
+
+    def test_raising_not_acceptable_for_unsupported_representation(self):
+        resp = self.call(
+                self.entity, 'get',
+                HTTP_ACCEPT='application/vnd.not-defined+json')
+        self.assertEqual(resp.status_code, 406)
+
+    def test_raising_406_not_acceptable_for_GET_and_unsupported_representation(self):  # NOQA
+        resp = self.call(
+                self.entity, 'get', HTTP_ACCEPT='application/eggsandmeat')
+        self.assertEqual(resp.status_code, 406)
+
+    def test_returning_default_content_type_for_GET_and_unsupported_representation(self):  # NOQA
+        resp = self.call(
+                self.entity, 'get', HTTP_ACCEPT='application/eggsandmeat')
+        self.assertEqual(resp['Content-Type'], self.entity.default_content_type)
+
+    def test_returning_nocontent_for_GET_and_unsupported_representation(self):  # NOQA
+        resp = self.call(
+                self.entity, 'get', HTTP_ACCEPT='application/eggsandmeat')
+        self.assertEqual(resp.content, b'')
 
 
 class SeeOtherTestCase(ResourceTestCase):
@@ -70,7 +100,9 @@ class SeeOtherTestCase(ResourceTestCase):
             return ctx.SeeOther('https://google.com')
 
     def test_that_seeother_accepts_any_content_type(self):
-        resp = self.call(self.seeother, 'get', HTTP_ACCEPT='application/vnd.not-defined+json')
+        resp = self.call(
+                self.seeother, 'get',
+                HTTP_ACCEPT='application/vnd.not-defined+json')
         self.assertEqual(resp.status_code, 303)
 
     def test_that_seeother_sends_back_location_header(self):
@@ -79,11 +111,12 @@ class SeeOtherTestCase(ResourceTestCase):
 
     def test_that_seeother_returns_no_content(self):
         resp = self.call(self.seeother, 'get')
-        self.assertEqual(resp.content, '')
+        self.assertEqual(response_content_as_text(resp), '')
 
     def test_that_seeother_returns_application_json_content_type(self):
         resp = self.call(self.seeother, 'get')
-        self.assertEqual(resp['Content-Type'], 'application/json')
+        self.assertEqual(
+                resp['Content-Type'], self.seeother._default_content_type)
 
 
 class NotFoundTestCase(ResourceTestCase):
@@ -102,11 +135,11 @@ class NotFoundTestCase(ResourceTestCase):
             from django.http import Http404
             raise Http404
 
-    def test_returning_404_code_when_handling_django_Http404_exception_and(self):
+    def test_returning_404_code_when_handling_django_Http404_exception(self):
         resp = self.call(self.resource_exc, 'get')
         self.assertEqual(resp.status_code, 404)
 
-    def test_valid_content_type_when_handling_django_Http404_exception_and(self):
+    def test_valid_content_type_when_handling_django_Http404_exception(self):
         resp = self.call(self.resource_exc, 'get')
         self.assertEqual(resp['Content-Type'], 'application/json')
 
@@ -187,8 +220,16 @@ class MethodsHandlingTestCase(ResourceTestCase):
         self.assertEqual(resp.status_code, 200)
 
     def test_succesful_handling_registered_POST(self):
-        resp = self.call(self.post, 'post')
+        resp = self.call(
+                self.post, 'post',
+                content_type=self.post._default_content_type)
         self.assertEqual(resp.status_code, 200)
+
+    def test_unsupported_media_type_POST(self):
+        resp = self.call(
+                self.post, 'post',
+                content_type='text/html')
+        self.assertEqual(resp.status_code, 415)
 
     def test_succesful_handling_registered_PUT(self):
         resp = self.call(self.put, 'put')
@@ -232,16 +273,20 @@ class ExceptionsHandlingTestCase(ResourceTestCase, SimpleTestCase):
     def setUp(self):
         super(ExceptionsHandlingTestCase, self).setUp()
 
-        self.exc_resource = self.api.resource('exception')
         self.notimpl_resource = self.api.resource('not-implemented')
-
-        @self.exc_resource.get()
-        def raise_some_exception(ctx):
-            raise Exception('Test exception')
 
         @self.notimpl_resource.get()
         def raise_not_impl_exception(ctx):
             raise NotImplementedError('This code is not implemented')
+
+    @property
+    def exc_resource(self):
+        resource = self.api.resource('exception')
+
+        @resource.get()
+        def raise_some_exception(ctx):
+            raise Exception('Test exception')
+        return resource
 
     def test_successful_returning_internal_server_error_status_500(self):
         resp = self.call(self.exc_resource, 'get')
@@ -249,44 +294,43 @@ class ExceptionsHandlingTestCase(ResourceTestCase, SimpleTestCase):
 
     def test_successful_returning_internal_server_error_message(self):
         resp = self.call(self.exc_resource, 'get')
-        resp_json = json.loads(resp.content)
+        resp_json = json.loads(response_content_as_text(resp))
         self.assertEqual(resp_json['error'], 'Test exception')
 
-    def test_not_returning_internal_server_error_traceback_when_debug_is_off(self):
-        with self.settings(DEBUG=False):
-            resp = self.call(self.exc_resource, 'get')
-            resp_json = json.loads(resp.content)
-            self.assertFalse('traceback' in resp_json)
+    def test_not_returning_internal_server_error_traceback_when_debug_is_off(self):  # NOQA
+        self.api = API('/', debug=False)
+        resp = self.call(self.exc_resource, 'get')
+        resp_json = json.loads(response_content_as_text(resp))
+        self.assertFalse('traceback' in resp_json)
 
-    def test_successful_returning_internal_server_error_traceback_when_debug_is_on(self):
-        with self.settings(DEBUG=True):
-            resp = self.call(self.exc_resource, 'get')
-            resp_json = json.loads(resp.content)
-            self.assertTrue('traceback' in resp_json)
+    def test_successful_returning_internal_server_error_traceback_when_debug_is_on(self):  # NOQA
+        self.api = API('/', debug=True)
+        resp = self.call(self.exc_resource, 'get')
+        resp_json = json.loads(response_content_as_text(resp))
+        self.assertTrue('traceback' in resp_json)
 
     def test_returning_internal_server_error_traceback_as_list(self):
-        with self.settings(DEBUG=True):
-            resp = self.call(self.exc_resource, 'get')
-            resp_json = json.loads(resp.content)
-            self.assertTrue(isinstance(resp_json['traceback'],list))
+        self.api = API('/', debug=True)
+        resp = self.call(self.exc_resource, 'get')
+        resp_json = json.loads(response_content_as_text(resp))
+        self.assertTrue(isinstance(resp_json['traceback'], list))
 
     def test_returning_valid_internal_server_error_traceback_entity(self):
-        with self.settings(DEBUG=True):
-            resp = self.call(self.exc_resource, 'get')
-            resp_json = json.loads(resp.content)
-            entity = resp_json['traceback'][0]
+        self.api = API('/', debug=True)
+        resp = self.call(self.exc_resource, 'get')
+        resp_json = json.loads(response_content_as_text(resp))
+        entity = resp_json['traceback'][0]
 
-            self.assertTrue('source' in entity)
-            self.assertTrue('line' in entity)
-            self.assertTrue('fn' in entity)
-            self.assertTrue('file' in entity)
+        self.assertTrue('source' in entity)
+        self.assertTrue('line' in entity)
+        self.assertTrue('fn' in entity)
+        self.assertTrue('file' in entity)
 
     def test_successful_returning_not_implemented_error_message(self):
         resp = self.call(self.notimpl_resource, 'get')
-        resp_json = json.loads(resp.content)
+        resp_json = json.loads(response_content_as_text(resp))
         self.assertEqual(resp_json['error'], 'This code is not implemented')
 
     def test_successful_returning_not_implemented_error_status_501(self):
         resp = self.call(self.notimpl_resource, 'get')
         self.assertEqual(resp.status_code, 501)
-

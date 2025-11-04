@@ -1,37 +1,122 @@
-from .context import Context, QueryDict
+import logging
+import sys
+
+from .exceptions import Http404
+from . import responses, serializers, contentnegotiation
 
 
-def build_context(api, resource, request):
-    try:
-        # Django may raise RawPostDataException sometimes;
-        # i.e. when processing POST multipart/form-data;
-        # In that cases we can't access raw body anymore, sorry
-
-        raw_body = request.body
-    except:
-        raw_body = None
-
-    parameters = {}
-
-    if request.resolver_match:
-        parameters.update(request.resolver_match.kwargs)
-
-    parameters.update(QueryDict(request.GET.lists()))
-
-    ctx = Context(
-            api, request=request, resource=resource,
-            method=request.method, parameters=parameters, data=request.POST,
-            files=request.FILES, raw=raw_body)
-
-    return ctx
+log = logging.getLogger(__name__)
 
 
-def resource_dispatcher_factory(api, resource):
-    from django.http import HttpResponse
+class DefaultResourceDispatcher(object):
+    def __init__(self, resource):
+        self.resource = resource
+
+    def dispatch(self, ctx, args=None, kwargs=None):
+        resource = self.resource
+        method = ctx.method
+
+        # support for X-HTTP-METHOD-OVERRIDE
+
+        method = ctx.headers.get('x-http-method-override') or method
+
+        # Check request method and raise MethodNotAllowed if unsupported
+
+        allowed_methods = resource.get_allowed_methods()
+
+        if method not in allowed_methods:
+            headers = {
+                    'Allow': ', '.join(allowed_methods),
+                }
+            return ctx.MethodNotAllowed({
+                'error': 'Method `%s` is not registered for resource `%s`' % (
+                    method, resource._path)}, headers=headers)
+
+        # Negotiate payload content type and store the best matching
+        # result in ctx.request_content_type
+
+        if ctx.content_type and ctx.content_length:
+            media_types = resource.get_method_supported_mediatypes(method)
+            if media_types:
+                ctx.request_content_type = contentnegotiation.best_match(
+                        media_types, ctx.content_type)
+            else:
+                # server does not support any representation
+                ctx.request_content_type = None
+        elif ctx.content_length:
+            # No payload content-type was provided.
+            # According to RFC7231 (Section 3.1.1.5) server may assume
+            # "application/octet-stream" or try to examine the type.
+
+            ctx.request_content_type = 'application/octet-stream'
+        else:
+            # No payload
+            ctx.request_content_type = None
+
+        # match response representation, serializer and content type
+
+        if ctx.content_length and ctx.content_type:
+            if ctx.request_content_type:
+                if ctx.raw:
+                    try:
+                        ctx.validator = resource._validators[
+                                    ctx.request_content_type]
+                    except KeyError:
+                        pass
+                    else:
+                        try:
+                            ctx.body = ctx.validator.parse(ctx)
+                        except serializers.DeserializationError as ex:
+                            resp = responses.exception_response_factory(
+                                    ctx, ex, cls=responses.BadRequestResponse)
+                            return resp
+            elif not ctx.content_length:
+                ctx.body = None
+            else:
+                return ctx.UnsupportedMediaType()
+
+        log.debug('Calling %s, %s, %s' % (method, args, kwargs))
+
+        try:
+            callback = resource.get_callback(method, ctx.request_content_type)
+            resp = self.do_call(callback, ctx, args=args, kwargs=kwargs)
+        except Http404:
+            return ctx.NotFound()
+        except Exception as ex:
+            if resource._api.debug:
+                tb = sys.exc_info()[2]
+            else:
+                tb = None
+            resp = responses.exception_response_factory(ctx, ex, tb)
+            log.exception(
+                    'Internal Server Error: %s', ctx.request.path,
+                    exc_info=sys.exc_info(),
+                    extra={
+                        'status_code': resp.status,
+                        'context': ctx,
+                    }
+            )
+            return resp
+        else:
+            if not resp:
+                raise TypeError(
+                        'Function `%s` does not return '
+                        'a response object' % callback)
+            return resp
+
+    def do_call(self, callback, ctx, args=None, kwargs=None):
+        return callback(ctx, *args, **kwargs)
+
+
+def resource_dispatcher_factory(
+        api, resource, response_builder, context_builder,
+        dispatcher_class=DefaultResourceDispatcher):
+
+    dispatcher = dispatcher_class(resource)
 
     def dispatch_request(request, *args, **kw):
-        ctx = build_context(api, resource, request)
-        bypass_resource_call = False
+        ctx = context_builder(api, resource, request)
+        bypass_processing = False
         middlewares_called = []
 
         for middleware in api.middlewares:
@@ -42,25 +127,25 @@ def resource_dispatcher_factory(api, resource):
             except AttributeError:
                 pass
             else:
-                if method(request, ctx) is False:
-                    bypass_resource_call = True
+                response = method(request, ctx)
+                if response:
+                    bypass_processing = True
                     break
 
-        if not bypass_resource_call:
-            response = resource(ctx, *args, **kw)
-        else:
-            response = HttpResponse()
+        if not bypass_processing:
+            response = dispatcher.dispatch(ctx, args=args, kwargs=kw)
 
-        middlewares_called.reverse()
+        response = response or None
 
-        for middleware in middlewares_called:
+        for middleware in reversed(api.middlewares):
             try:
                 method = middleware.process_response
             except AttributeError:
                 pass
             else:
-                if method(request, response, ctx) is False:
-                    break
+                new_response = method(request, response, ctx)
+                if new_response:
+                    response = new_response
 
-        return response
+        return response_builder(response, resource)
     return dispatch_request

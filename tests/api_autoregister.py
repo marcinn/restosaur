@@ -1,3 +1,3 @@
-from restosaur import API
+from restosaur.contrib.django import API
 
 api = API()

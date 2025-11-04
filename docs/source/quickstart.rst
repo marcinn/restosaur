@@ -215,8 +215,8 @@ So in that case we need just to register it as a representation::
         # ...
 
 
-Linking to resources
---------------------
+Linking
+-------
 
 REST services are about representations and relations between them, so
 linking them together is fundamental. The links can be cathegorized as
@@ -224,9 +224,31 @@ internal and external. Internal links are handled by Restosaur, but
 external links may be just URIs passed as a strings.
 
 Let's complete the Post's representation by adding a URIs of every
-object. We'll use ``context.url_for()`` method to generate them::
+object.
 
-    context.url_for(post_detail, pk=post.pk)
+
+Linking to resources
+....................
+
+We'll use ``context.link()`` method to generate URL for a Post instance
+detail view::
+
+    context.link(post_detail, post)
+
+
+.. note::
+
+    This will generate a URL for the ``post_detail`` resource, which has
+    defined an URL template as ``posts/:pk``. The ``:pk`` variable will
+    be read from ``post`` instance. 
+    
+    The only rule is that Restosaur expects ``pk`` to be an object's
+    property or a key/index.
+
+    This is an equivalent of::
+
+        context.url_for(post_detail, pk=post.pk)
+   
 
 You need just to add this call to ``post_as_dict`` factory::
 
@@ -237,7 +259,7 @@ You need just to add this call to ``post_as_dict`` factory::
                 'title': post.title,
                 'content': post.content,
                 # create link (URI) to this object
-                'href': context.url_for(post_detail, pk=post.pk),
+                'href': context.link(post_detail, post),
                 }
 
 .. note::
@@ -263,13 +285,84 @@ You need just to add this call to ``post_as_dict`` factory::
                 'id': post.pk,
                 'title': post.title,
                 'content': post.content,
-                'link': json_link(context.url_for(post_detail, pk=post.pk)),
+                'link': json_link(context.link(post_detail, post)),
                 }
 
     Just place ``json_link`` helper in your core ``webapi.py`` module
     and import it when needed::
        
         from webapi import api, get_object_or_404, json_link
+
+Linking to models
+.................
+
+Restosaur gives a possibility to register link views for your models.
+This approach is a next layer of encapsulation and DRY improvement.
+
+The low-level ``context.url_for()`` method requires a resource and
+path's specific arguments to generate the URL. There is no encapsulation
+at all, and DRY is broken.
+
+The ``context.link()`` shortcut encapsulates URL generation by passing
+resource and model instance as arguments. You don't need to repeat URL
+arguments.
+
+And finally ``context.link_model()`` shortcut encapsulates URL generation
+by referencing directly to the model instance or class. You don't need
+to provide resource nor argument at all. This level of
+resource linking encapsulation provides best DRY principles. 
+
+The ``context.link_model()`` requires model view registration. This can
+be done several ways:
+
+  * using a resource class decorator shourcut -- ``resource.model(ModelClass)``
+  * using an API instance -- ``api.register_view(ModelClass, resource)``
+  * using a class decorator on the model class -- ``@api.view(resource)``
+
+Example of using a resource shourtcut::
+
+    @post_detail.model(Post)
+    class Post(models.Model):
+        pass
+
+
+Example of using an API instance::
+
+    api.register_view(Post, post_detail)
+
+
+Example of using an API class decorator::
+
+    @api.view(post_detail)
+    class Post(models.Model):
+        pass
+
+
+.. note::
+
+    Buiding complex API you may split it into many modules. In that
+    cases there is a high risk of circular imports problem.
+
+    Linking shortcuts are designed to avoid import problems and
+    selecting a way of registering view for the model is highly
+    dependent on specific case.
+
+    To avoid circular import problems you may also pass dotted resource
+    path instead of resource instance::
+
+        api.register_view(Post, 'blog.restapi.post_detail')
+
+        # or using a decorator:
+
+        @api.view('blog.restapi.post_detail')
+        class Post(models.Model):
+            pass
+
+
+.. note::
+    
+    Model can be an object of any type, not only Django's
+    ``django.db.Model``. There is no limitation.
 
 
 Complete example of the module
@@ -307,7 +400,7 @@ Complete example of the module
                 'title': post.title,
                 'content': post.content,
                 # create link (URI) to this object
-                'href': context.url_for(post_detail, pk=post.pk),
+                'href': context.link(post_detail, post),
                 }
 
 
@@ -339,7 +432,7 @@ To achieve that you'll need to use a ``login_required`` decorator
 and wrap your controllers/views with it. Add to your main ``webapi.py``
 module::
 
-    from restosaur.decorators import login_required
+    from restosaur.contrib.django.decorators import login_required
 
 import decorator in your ``blog/restapi.py`` at the top of the module::
 
@@ -357,13 +450,6 @@ and wrap your controllers with it::
     @login_required
     def post_detail_view(context, pk):
         # ...
-
-.. note::
-
-    The ``login_required`` decorator will be moved
-    to ``restosaur.contrib.django.decorators`` module in the future
-    (from v0.8). After upgrading you will need to change just one import 
-    in your core ``webapi.py`` module.
 
 
 Accessing the request object
@@ -403,9 +489,9 @@ parameters, the payload, uploaded files and headers.
 Response factories
 ^^^^^^^^^^^^^^^^^^
 
-Context object delivers factories for common response types:
+Context object delivers shortcut factories for common response types:
 
-  * ``context.Response()`` -- ``200 OK`` response
+  * ``context.OK()`` -- ``200 OK`` response
   * ``context.Created()`` -- ``201 Created`` response
   * ``context.NoContent()`` -- ``204 No Content`` response
   * ``context.SeeOther()`` -- ``303 See Other`` response
@@ -453,6 +539,39 @@ In our case it will be a Django ``User`` or ``AnonymousUser`` class instance.
     processing speed.
 
 
+Two methods are currently handled:
+* ``process_request(request, context)``,
+* ``process_response(request, response, context)``.
+  
+The order of calling looks like:
+
+* call ``process_request()`` in a declared order,
+* call service (a view),
+* call ``process_response()`` in a reversed order,
+* transform response to a representation, and serialize it.
+
+Both methods can return a new response instance.
+
+In case of returing a new response from ``process_request``,
+the request processing will be interrupted (a service/view 
+will not be called, too), but processing of responses will
+be continued.
+
+In case of returning a new response from ``process_response``,
+the response object will be replaced completely, and passed
+as a response argument in next calls. Alternatively a response
+instance can be just changed.
+
+A new response can be simply created using shortcuts defined
+in context, ie.:
+
+.. code:: python
+
+   class BadRequestMiddleware(object):
+      def process_response(self, request, response, context):
+         return context.BadRequest()
+
+
 Permissions
 ^^^^^^^^^^^
 
@@ -476,7 +595,7 @@ Restosaur provides ``staff_member_required`` decorator as an example
 of Django's decorator of same name. You need to import it into
 ``webapi.py`` module::
 
-    from restosaur.decorators import staff_member_required
+    from restosaur.contrib.django.decorators import staff_member_required
 
 import it to your ``blog/restapi.py`` module::
 
@@ -489,13 +608,6 @@ and just wrap your callbacks with it::
     @staff_member_required
     def post_list_view(context):
         # ...
-
-.. note::
-
-    The ``staff_member_required`` decorator will be moved
-    to ``restosaur.contrib.django.decorators`` module in the future
-    (from v0.8). After upgrading you will need to change just one import 
-    in your core ``webapi.py`` module.
 
 
 Object level permissions

@@ -1,3 +1,2 @@
-mimeparse
-times>=0.7
-nose
+python-mimeparse
+times2==0.9

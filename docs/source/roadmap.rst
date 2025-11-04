@@ -12,24 +12,21 @@ Roadmap
 ^^^^^^^^^^
 
   * stable representations and services API
-  * removed obsolete code
+  * remove obsolete code
   * better test coverage
-  * enhanced content negotiation and requests dispatching
-  * added final middleware support
+  * enhance content negotiation and requests dispatching
+  * add final middleware support
+  * Python 3.x support
 
 0.8 (beta)
 ^^^^^^^^^^
 
 First web framework independent release:
 
-  * added wsgi interface
-  * moved Django adapter to contrib module
-  * moved Django helpers to contrib module
+  * add wsgi interface
+  * move Django adapter to contrib module
+  * move Django helpers to contrib module
 
-0.9 (beta)
-^^^^^^^^^^^
-
-  * Python 3.x support
 
 1.0
 ^^^

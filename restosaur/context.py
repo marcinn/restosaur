@@ -1,15 +1,25 @@
-import collections
 import email
-import types
-import urllib
-import urlparse
+import functools
 
-import responses
-import times
-# todo: implement own conversion utility
-from django.utils.encoding import force_bytes
+import six
+import times2 as times
 
+from .datastructures import QueryDict
+
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
+
+try:
+    from urllib import urlencode
+except ImportError:
+    from urllib.parse import urlencode
+
+from . import responses
 from .loading import load_resource
+from .representations import match_representation
+from .utils import force_bytes
 
 
 def parse_http_date(header, headers):
@@ -21,112 +31,56 @@ def parse_http_date(header, headers):
             pass
 
 
-class QueryDict(collections.MutableMapping):
-    """
-    QueryDict acts like a plain `dict` type, but it handles
-    automatially multiple values for same key.
-
-    The most safest representation of URI query parameters is a list
-    of tuples, because the parameter names aren't unique. Unfortunately
-    accessing list of tuples is not so handy, so a mapping is
-    required.
-
-    In most cases query parameters looks like a mapping of simple
-    key => value pairs, so we're expecting just one value per key. But when
-    value is a list, we're expecting that accessing a key will return that
-    list, not last nor first value.
-
-    The problematic case is for keys, for which we're expecting always a list
-    of values, but just one was passed in URI. Accessing the key will give
-    just straight value instead of expected list with one item. In that cases
-    you should use `QueryDict.getlist()` directly, which returns always a list.
-
-    The values are stored internally as lists.
-
-    `.items()` method returns a list of (key, value) tuples, where value is
-    a single value from a key's values list. This means that key may not be
-    unique. This representation is compatible with `urllib.urlencode()`.
-
-    `.keys()` returns unique key names, same as for pure `dict`.
-
-    `.values()` returns list of same values, which can be accessed by key,
-
-    `.lists()` returns internal representation as list of lists.
-    """
-
-    def __init__(self, initial=None):
-        self._data = {}
-        self.update(initial)
-
-    def update(self, data):
-        if data is None:
-            return
-        else:
-            try:
-                data = data.items()
-            except AttributeError:
-                pass
-            finally:
-                keys = set([x[0] for x in data])
-                for key in keys:
-                    self._data[key] = []
-                for key, value in data:
-                    if isinstance(value, (types.ListType, types.TupleType)):
-                        for x in value:
-                            self._data[key].append(x)
-                    else:
-                        self._data[key].append(value)
-
-    def items(self):
-        result = []
-        for key, values in self._data.items():
-            result += map(lambda x: (key, x), values)
-        return result
-
-    def getlist(self, key, default=None):
-        return self._data.get(key, default)
-
-    def lists(self):
-        return self._data.items()
-
-    def __setitem__(self, key, value):
-        return self.update({key: value})
-
-    def __getitem__(self, key):
-        return self._data[key][-1]\
-                if len(self._data[key]) < 2 else self._data[key]
-
-    def __delitem__(self, key):
-        del self._data[key]
-
-    def __len__(self):
-        return len(self._data)
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def __repr__(self):
-        return repr(self._data)
-
-
 class Context(object):
     def __init__(
-            self, api, request, resource, method, parameters=None,
-            body=None, data=None, files=None, raw=None, extra=None,
-            headers=None):
+        self,
+        api,
+        host="localhost",
+        path="/",
+        method="GET",
+        parameters=None,
+        body=None,
+        data=None,
+        files=None,
+        raw=None,
+        extra=None,
+        headers=None,
+        charset=None,
+        secure=False,
+        encoding="utf-8",
+        resource=None,
+        request=None,
+        content_length=None,
+        content_type=None,
+    ):
         self.method = method
         self.api = api
+        self.charset = charset
         self.headers = headers or {}
+        self.resource = resource
         self.request = request
+        self.encoding = encoding
+        self.secure = secure
+        self.host = (host or "").strip("/")
         self.body = body
         self.raw = raw
-        self.resource = resource
+        self.path = path
         self.parameters = QueryDict(parameters)  # GET
         self.data = data or {}  # POST
         self.files = files or {}  # FILES
         self.deserializer = None
-        self.content_type = None
+        self.content_type = content_type
+        self.content_length = content_length
         self.extra = extra or {}
+
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, path):
+        parsed = urlparse(path)
+        self._path = self.api.path_re.sub("", (parsed.path or ""), count=1).lstrip("/")
 
     def build_absolute_uri(self, path=None, parameters=None):
         """
@@ -137,44 +91,98 @@ class Context(object):
         (including query string) will be used and extended by
         optional `parameters`.
         """
+        _requested_path = path
+        path = ((path or "") if path is not None else self.path).lstrip("/")
 
         def build_uri(path):
-            current = 'http%s://%s%s' % (
-                    's' if self.request.is_secure() else '',
-                    self.request.get_host(), self.request.path)
-            return urlparse.urljoin(current, path)
+            return "http%s://%s%s%s/%s" % (
+                "s" if self.secure else "",
+                self.host,
+                self.api.force_script_name,
+                self.api.path,
+                path,
+            )
 
         params = QueryDict()
-        if path:
-            full_path = u'/'.join(
-                    filter(None, (self.api.path+path).split('/')))
-            if path.endswith('/'):
-                full_path += '/'
-            uri = build_uri('/'+full_path)
-        else:
+        uri = build_uri(path)
+        if not _requested_path:
             params.update(self.parameters.items())
-            uri = build_uri(self.request.path)
 
         # todo: change to internal restosaur settings
-        enc = self.request.GET.encoding
+        enc = self.encoding
 
         params.update(parameters or {})
-        params = map(
-                lambda x: (x[0], force_bytes(x[1], enc)),
-                params.items())
+        params = list(map(lambda x: (x[0], force_bytes(x[1], enc)), params.items()))
 
         if params:
-            return '%s?%s' % (uri, urllib.urlencode(params))
+            return "%s?%s" % (uri, urlencode(params))
         else:
             return uri
 
+    def match_representation(self, model):
+        return match_representation(self.resource, self, model)
+
+    def transform_representation(self, model):
+        representation = self.match_representation(model)
+        return representation._transform_func(model, self)
+
+    def url(self, model=None, resource=None, name=None, parameters=None, query=None):
+        """
+        Create URL for model named link or resource
+        with optional query parameters
+        """
+
+        if model and resource:
+            raise ValueError("Provide `model` or `resource`. Both set.")
+
+        if model:
+            return self.model_url(model, name=name, parameters=parameters, query=query)
+
+        if name:
+            raise ValueError("Named link must be used with model")
+
+        if not resource:
+            raise ValueError("Resource or model must is required")
+
+        return self.resource_url(resource, parameters=parameters, query=query)
+
+    def self_url(self, query=None, append_query=False):
+        """
+        Create URL pointing to self with optional query parameters.
+
+        If `append_query` is True, the current query string parameters
+        will be added.
+        """
+
+        return self.resource.uri(self, query=query, append_query=append_query)
+
     def url_for(self, resource, **kwargs):
         """
-        Shortcut wrapper of `resource.uri()`
+        Deprecated resource URL generator
         """
-        if isinstance(resource, types.StringTypes):
+        return self.resource_url(resource, parameters=kwargs)
+
+    def model_url(self, model, name=None, query=None, parameters=None):
+        """
+        Generate URL for model's named link with optional query parameters.
+        Model instance or class is accepted.
+
+        For classes you may use `parameters` argument to provide values
+        for path template.
+        """
+        return self.api.linked_url(
+            self, model, name=name, parameters=parameters, query=query
+        )
+
+    def resource_url(self, resource, parameters=None, query=None):
+        """
+        Generate URL for the resource using path parameters
+        and optional query string parameters.
+        """
+
+        if isinstance(resource, six.string_types):
             resource = load_resource(resource)
-        return resource.uri(self, params=kwargs)
+        return resource.uri(self, params=parameters, query=query)
 
     def is_modified_since(self, dt):
         """
@@ -182,11 +190,14 @@ class Context(object):
         Returns True if `dt` is newer than `If-Modified-Since`,
         False otherwise.
         """
-        if_modified_since = parse_http_date('if-modified-since', self.headers)
+        if_modified_since = parse_http_date("if-modified-since", self.headers)
+
+        dt = times.make_aware(dt, tz="UTC")  # assume tz=utc if not set
 
         if if_modified_since:
-            return times.to_unix(
-                dt.replace(microsecond=0)) > times.to_unix(if_modified_since)
+            return (times.to_unix(dt.replace(microsecond=0))) > (
+                times.to_unix(if_modified_since)
+            )
 
         return True
 
@@ -194,46 +205,85 @@ class Context(object):
     def deserialized(self):
         return self.body
 
+    def wrap(self, func):
+        """Wrap `func` with the Context instance as a last argument"""
+
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            args = list(args) + [self]
+            return func(*args, **kwargs)
+
+        return wrapped
+
     # response factories
 
-    def Response(self, *args, **kwargs):
-        return responses.Response(self, *args, **kwargs)
+    def Continue(self, *args, **kwargs):  # 100
+        return responses.ContinueResponse(self, *args, **kwargs)
 
-    def Created(self, *args, **kwargs):
+    def OK(self, *args, **kwargs):  # 200
+        return responses.OKResponse(self, *args, **kwargs)
+
+    def Response(self, *args, **kwargs):  # deprecated 200-like response
+        return self.OK(*args, **kwargs)
+
+    def Created(self, *args, **kwargs):  # 201
         return responses.CreatedResponse(self, *args, **kwargs)
 
-    def ValidationError(self, *args, **kwargs):
-        return responses.ValidationErrorResponse(self, *args, **kwargs)
+    def Accepted(self, *args, **kwargs):  # 202
+        return responses.AcceptedResponse(self, *args, **kwargs)
 
-    def NotAcceptable(self, *args, **kwargs):
-        return responses.NotAcceptableResponse(self, *args, **kwargs)
-
-    def NotFound(self, *args, **kwargs):
-        return responses.NotFoundResponse(self, *args, **kwargs)
-
-    def SeeOther(self, *args, **kwargs):
-        return responses.SeeOtherResponse(self, *args, **kwargs)
-
-    def NotModified(self, *args, **kwargs):
-        return responses.NotModifiedResponse(self, *args, **kwargs)
-
-    def MethodNotAllowed(self, *args, **kwargs):
-        return responses.MethodNotAllowedResponse(self, *args, **kwargs)
-
-    def Forbidden(self, *args, **kwargs):
-        return responses.ForbiddenResponse(self, *args, **kwargs)
-
-    def BadRequest(self, *args, **kwargs):
-        return responses.BadRequestResponse(self, *args, **kwargs)
-
-    def Unauthorized(self, *args, **kwargs):
-        return responses.UnauthorizedResponse(self, *args, **kwargs)
-
-    def NoContent(self, *args, **kwargs):
+    def NoContent(self, *args, **kwargs):  # 204
         return responses.NoContentResponse(self, *args, **kwargs)
 
-    def Entity(self, *args, **kwargs):
+    def MovedPermanently(self, *args, **kwargs):  # 301
+        return responses.MovedPermanentlyResponse(self, *args, **kwargs)
+
+    def Found(self, *args, **kwargs):  # 302
+        return responses.FoundResponse(self, *args, **kwargs)
+
+    def SeeOther(self, *args, **kwargs):  # 303
+        return responses.SeeOtherResponse(self, *args, **kwargs)
+
+    def NotModified(self, *args, **kwargs):  # 304
+        return responses.NotModifiedResponse(self, *args, **kwargs)
+
+    def BadRequest(self, *args, **kwargs):  # 400
+        return responses.BadRequestResponse(self, *args, **kwargs)
+
+    def Unauthorized(self, *args, **kwargs):  # 401
+        return responses.UnauthorizedResponse(self, *args, **kwargs)
+
+    def Forbidden(self, *args, **kwargs):  # 403
+        return responses.ForbiddenResponse(self, *args, **kwargs)
+
+    def NotFound(self, *args, **kwargs):  # 404
+        return responses.NotFoundResponse(self, *args, **kwargs)
+
+    def MethodNotAllowed(self, *args, **kwargs):  # 405
+        return responses.MethodNotAllowedResponse(self, *args, **kwargs)
+
+    def NotAcceptable(self, *args, **kwargs):  # 406
+        return responses.NotAcceptableResponse(self, *args, **kwargs)
+
+    def Conflict(self, *args, **kwargs):  # 409
+        return responses.ConflictResponse(self, *args, **kwargs)
+
+    def Gone(self, *args, **kwargs):  # 410
+        return responses.GoneResponse(self, *args, **kwargs)
+
+    def UnsupportedMediaType(self, *args, **kwargs):  # 415
+        return responses.UnsupportedMediaTypeResponse(self, *args, **kwargs)
+
+    def ValidationError(self, *args, **kwargs):  # 422 WEBDAV Deprecated
+        return responses.ValidationErrorResponse(self, *args, **kwargs)
+
+    def InternalServerError(self, *args, **kwargs):
+        return responses.InternalErrorResponse(self, *args, **kwargs)
+
+    InternalError = InternalServerError
+
+    def Entity(self, *args, **kwargs):  # deprecated, 200
         return responses.EntityResponse(self, *args, **kwargs)
 
-    def Collection(self, *args, **kwargs):
+    def Collection(self, *args, **kwargs):  # deprecated, 200
         return responses.CollectionResponse(self, *args, **kwargs)

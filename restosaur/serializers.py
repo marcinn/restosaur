@@ -1,6 +1,9 @@
 import json
 import datetime
 import decimal
+import six
+
+from .datastructures import MultiValueDict
 
 
 __all__ = [
@@ -8,11 +11,25 @@ __all__ = [
         'default_serializers']
 
 
+class SerializeDeserializeError(Exception):
+    pass
+
+
+class DeserializationError(SerializeDeserializeError):
+    pass
+
+
+class SerializationError(SerializeDeserializeError):
+    pass
+
+
+_datetimes = (
+    datetime.datetime, datetime.date, datetime.time)
+
+
 class DefaultRestfulEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
-        elif isinstance(obj, datetime.date):
+        if isinstance(obj, _datetimes):
             return obj.isoformat()
         elif isinstance(obj, datetime.timedelta):
             return (datetime.datetime.min + obj).time().isoformat()
@@ -24,11 +41,16 @@ class DefaultRestfulEncoder(json.JSONEncoder):
 
 class DateTimeJsonSerializer(object):
     def dumps(self, obj):
-        return json.dumps(obj, cls=DefaultRestfulEncoder)
+        try:
+            return json.dumps(obj, cls=DefaultRestfulEncoder)
+        except (TypeError, ValueError) as ex:
+            raise SerializationError(ex)
 
     def loads(self, txt):
-        obj = json.loads(txt)
-        return obj
+        try:
+            return json.loads(txt)
+        except (TypeError, ValueError) as ex:
+            raise DeserializationError(ex)
 
 
 class JsonSerializer(object):
@@ -36,22 +58,57 @@ class JsonSerializer(object):
         self._json = DateTimeJsonSerializer()
 
     def loads(self, ctx):
-        return self._json.loads(ctx.raw)
+        if isinstance(ctx.raw, bytes):
+            try:
+                return self._json.loads(ctx.raw.decode(ctx.charset))
+            except (TypeError, ValueError) as ex:
+                raise DeserializationError(ex)
+        else:
+            try:
+                return self._json.loads(ctx.raw)
+            except (TypeError, ValueError) as ex:
+                raise DeserializationError(ex)
 
-    def dumps(self, data):
-        return self._json.dumps(data)
+    def dumps(self, ctx, data):
+        try:
+            return self._json.dumps(data)
+        except (TypeError, ValueError) as ex:
+            raise SerializationError(ex)
 
 
 class MultiPartFormDataSerializer(object):
     def loads(self, ctx):
-        from django.utils.datastructures import MultiValueDict
         data = MultiValueDict()
         data.update(ctx.data)
         data.update(ctx.files)
         return data
 
-    def dumps(self, data):
+    def dumps(self, ctx, data):
         raise NotImplementedError
+
+
+class HTMLSerializer(object):
+    def loads(self, ctx):
+        return ctx.raw
+
+    def dumps(self, ctx, data):
+        try:
+            return six.text_type(data)
+        except (TypeError, ValueError, UnicodeEncodeError,
+                UnicodeDecodeError) as ex:
+            raise SerializationError(ex)
+
+
+class PlainTextSerializer(object):
+    def loads(self, ctx):
+        return ctx.raw
+
+    def dumps(self, ctx, data):
+        try:
+            return six.text_type(data)
+        except (TypeError, ValueError, UnicodeEncodeError,
+                UnicodeDecodeError) as ex:
+            raise SerializationError(ex)
 
 
 class AlreadyRegistered(Exception):
@@ -88,6 +145,10 @@ default_serializers = SerializersRegistry()
 default_serializers.register(
         'application/json', JsonSerializer())
 default_serializers.register(
+        'text/html', HTMLSerializer())
+default_serializers.register(
+        'text/plain', PlainTextSerializer())
+default_serializers.register(
         'multipart/form-data', MultiPartFormDataSerializer())
 
 
@@ -96,4 +157,8 @@ def register(mimetype, serializer):
 
 
 def get(mimetype):
-    return default_serializers.get(mimetype)
+    return default_serializers[mimetype]
+
+
+def get_all():
+    return default_serializers.items()
