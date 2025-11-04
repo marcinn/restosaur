@@ -169,6 +169,8 @@ And browse your posts via http://localhost:8000/posts
 * Python 3.8
 * Python 3.9
 
+* Python 3.13 - `cgi` module has been replaced with `email.message` to ensure compatibility.
+
 ## Roadmap
 
 * 0.7 (beta) - stabilize representations and services API, remove obsolete code; better test coverage, **Python 3.x**, **Django as an optional adapter**, **Flask adapter**

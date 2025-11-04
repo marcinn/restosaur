@@ -1,4 +1,4 @@
-import cgi
+from email.message import Message
 
 __version__ = '1.5.2'
 __author__ = 'Joe Gregorio'
@@ -23,7 +23,11 @@ def parse_mime_type(mime_type):
 
     :rtype: (str,str,dict)
     """
-    full_type, params = cgi.parse_header(mime_type)
+    msg = Message()
+    msg['content-type'] = mime_type
+    params = {k: v for k, v in msg.get_params()}
+    full_type = msg.get_content_type()
+
     # Java URLConnection class sends an Accept header that includes a
     # single '*'. Turn it into a legal wildcard.
     if full_type == '*':

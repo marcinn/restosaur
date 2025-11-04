@@ -3,6 +3,7 @@
 *.swp
 /*.egg-info
 /dist
+/env
 /.env
 /.env3
 /.env34
